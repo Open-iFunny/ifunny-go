@@ -1,5 +1,5 @@
 ## TODO
-- [ ] move over the chat library code from go-discoverybot
+- [x] move over the chat library code from [discovery-bot](https://github.com/open-ifunny/discovery-bot)
 - [ ] move over the feed scouring code from psyduck-etl/ifunny
 - [ ] basic crawling stuff: getting content ( from feeds, explore, timelines ), observe users, comments
 - [ ] channels for streaming crawl-able content ( think iterators from the node library ), using golang-set `Iterator`s might make sense here
