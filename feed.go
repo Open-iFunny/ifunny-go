@@ -41,7 +41,7 @@ type APIContentPost struct {
 type APIPaging struct {
 	Cursors struct {
 		Next string `json:"next,omitempty"`
-		Prev string `json:"prev,omitempty"` // TODO is this right
+		Prev string `json:"prev,omitempty"`
 	} `json:"cursors"`
 	HasNext bool `json:"hasNext"`
 	HasPrev bool `json:"hasPrev"`
