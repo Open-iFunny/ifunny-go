@@ -43,7 +43,7 @@ func MakeClientLog(bearer, userAgent string, log *logrus.Logger) (*Client, error
 }
 
 type Client struct {
-	bearer, userAgeng string
+	bearer, userAgent string
 	http              *http.Client
 	log               *logrus.Logger
 
@@ -64,7 +64,7 @@ func request(desc compose.Request, header http.Header, client *http.Client) (*ht
 func (client *Client) header() http.Header {
 	return http.Header{
 		"authorization":     []string{"bearer " + client.bearer},
-		"user-agent":        []string{client.userAgeng},
+		"user-agent":        []string{client.userAgent},
 		"ifunny-project-id": []string{projectID},
 	}
 }
