@@ -1,7 +1,9 @@
 package ifunny
 
 import (
+	"github.com/google/uuid"
 	"github.com/open-ifunny/ifunny-go/compose"
+	"github.com/sirupsen/logrus"
 )
 
 // TODO types of content, missing a bunch of content types
@@ -64,7 +66,7 @@ type Content struct {
 	} `json:"video_clip,omitempty"`
 }
 
-type APIPaging struct {
+type FeedCursor struct {
 	Cursors struct {
 		Next string `json:"next,omitempty"`
 		Prev string `json:"prev,omitempty"`
@@ -73,9 +75,9 @@ type APIPaging struct {
 	HasPrev bool `json:"hasPrev"`
 }
 
-type APIFeedPage struct {
-	Items  []Content `json:"items"`
-	Paging APIPaging `json:"paging"`
+type FeedPage struct {
+	Items  []Content  `json:"items"`
+	Paging FeedCursor `json:"paging"`
 }
 
 func (client *Client) GetContent(id string) (*Content, error) {
@@ -84,4 +86,59 @@ func (client *Client) GetContent(id string) (*Content, error) {
 	})
 	err := client.RequestJSON(compose.ContentByID(id), content)
 	return &content.Data, err
+}
+
+func (client *Client) GetFeedPage(feed string, limit int, page compose.Page[string]) (*FeedPage, error) {
+	content := new(struct {
+		Data struct {
+			Content FeedPage `json:"content"`
+		} `json:"data"`
+	})
+
+	err := client.RequestJSON(compose.Feed(feed, limit, page), content)
+	return &content.Data.Content, err
+}
+
+// func (client *Client) IterFeed(feed string) Iterator[*Content] {
+
+// }
+
+func (client *Client) IterFeed(feed string) <-chan Result[*Content] {
+	page := compose.NoPage[string]()
+	data := make(chan Result[*Content])
+
+	traceID := uuid.New().String()
+	log := client.log.WithFields(logrus.Fields{
+		"trace_id": traceID,
+		"feed":     feed,
+	})
+
+	go func() {
+		defer close(data)
+		for {
+			log.Trace("buffering a feed page")
+			items, err := client.GetFeedPage(feed, 30, page)
+			if err != nil {
+				log.Trace("sending an error end exiting")
+				data <- Result[*Content]{Err: err}
+				return
+			}
+
+			for _, v := range items.Items {
+				data <- Result[*Content]{V: &v}
+			}
+
+			log.Tracef("next: %s, has next: %t",
+				items.Paging.Cursors.Next, items.Paging.HasNext)
+
+			if !items.Paging.HasNext {
+				log.Trace("no next page, exiting")
+				return
+			}
+
+			page = compose.Next(items.Paging.Cursors.Next)
+		}
+	}()
+
+	return data
 }
