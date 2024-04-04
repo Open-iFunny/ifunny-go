@@ -25,20 +25,15 @@ const (
 	PREV pageDirection = "prev"
 )
 
-type Page struct {
+type Page[T int | string] struct {
 	Key   pageDirection
-	Value int64
+	Value T
 }
 
-func NoPage() Page          { return Page{NONE, 0} }
-func Prev(value int64) Page { return Page{PREV, value} }
-func Next(value int64) Page { return Page{NEXT, value} }
+func NoPage[T int | string]() Page[T]      { return Page[T]{NONE, *new(T)} }
+func Prev[T int | string](value T) Page[T] { return Page[T]{PREV, value} }
+func Next[T int | string](value T) Page[T] { return Page[T]{NEXT, value} }
 
 func get(path string, query url.Values) Request {
 	return Request{Method: "GET", Path: path, Query: query}
-}
-
-type SPage struct {
-	Key   pageDirection
-	Value string
 }

@@ -30,7 +30,7 @@ func EventsIn(channel string) turnpike.Subscribe {
 	}
 }
 
-func ListMessages(channel string, limit int, page Page) turnpike.Call {
+func ListMessages(channel string, limit int, page Page[int]) turnpike.Call {
 	call := turnpike.Call{
 		Procedure: URI("list_messages"),
 		ArgumentsKw: map[string]interface{}{

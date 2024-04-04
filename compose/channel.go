@@ -124,7 +124,7 @@ var (
 	ChatsTrending = Request{Method: "GET", Path: "/chats/trending"}
 )
 
-func ChatsQuery(query string, limit int, page SPage) Request {
+func ChatsQuery(query string, limit int, page Page[string]) Request {
 	return Request{
 		Method: "GET", Path: "/chats/open_channels",
 		Query: url.Values{
