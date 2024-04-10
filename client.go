@@ -58,7 +58,21 @@ func request(desc compose.Request, header http.Header, client *http.Client) (*ht
 	request.Header = header
 	request.URL.RawQuery = desc.Query.Encode()
 
-	return client.Do(request)
+	r, err := client.Do(request)
+	if err != nil {
+		return nil, err
+	}
+
+	if r.StatusCode >= 400 {
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed collecting HTTP error: %s", err)
+		}
+
+		return nil, fmt.Errorf(string(b))
+	}
+
+	return r, nil
 }
 
 func (client *Client) header() http.Header {
