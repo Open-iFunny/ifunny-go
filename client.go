@@ -50,6 +50,16 @@ type Client struct {
 	Self *User
 }
 
+type APIError struct {
+	Kind        string `json:"error"`
+	Description string `json:"error_description"`
+	Status      int    `json:"status"`
+}
+
+func (e APIError) Error() string {
+	return fmt.Sprintf("HTTP %d: %s: %s", e.Status, e.Kind, e.Description)
+}
+
 func request(desc compose.Request, header http.Header, client *http.Client) (*http.Response, error) {
 	request, err := http.NewRequest(desc.Method, apiRoot+desc.Path, desc.Body)
 	if err != nil {
@@ -69,7 +79,19 @@ func request(desc compose.Request, header http.Header, client *http.Client) (*ht
 			return nil, fmt.Errorf("failed collecting HTTP error: %s", err)
 		}
 
-		return nil, fmt.Errorf(string(b))
+		unwrap := new(struct {
+			Msg []byte `json:"msg"`
+		})
+		if err := json.Unmarshal(b, unwrap); err != nil {
+			return nil, fmt.Errorf("failed to unwrap HTTP error: %s", err)
+		}
+
+		apiErr := new(APIError)
+		if err := json.Unmarshal(b, apiErr); err != nil {
+			return nil, fmt.Errorf("failed to decode HTTP error: %s", err)
+		}
+
+		return nil, apiErr
 	}
 
 	return r, nil
