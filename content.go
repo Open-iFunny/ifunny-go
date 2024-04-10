@@ -119,7 +119,7 @@ func (client *Client) IterFeed(feed string) <-chan Result[*Content] {
 			log.Trace("buffering a feed page")
 			items, err := client.GetFeedPage(feed, 30, page)
 			if err != nil {
-				log.Trace("sending an error end exiting")
+				log.Trace("failed to get a feed page, exiting")
 				data <- Result[*Content]{Err: err}
 				return
 			}

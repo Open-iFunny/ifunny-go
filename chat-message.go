@@ -2,7 +2,9 @@ package ifunny
 
 import (
 	"github.com/gastrodon/turnpike"
+	"github.com/google/uuid"
 	"github.com/open-ifunny/ifunny-go/compose"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -61,37 +63,37 @@ func (chat *Chat) ListMessages(desc turnpike.Call) ([]*ChatEvent, int64, int64, 
 	return output.Messages, output.Prev, output.Next, err
 }
 
-func (chat *Chat) IterMessages(desc turnpike.Call) <-chan *ChatEvent {
-	output := make(chan *ChatEvent)
+func (chat *Chat) IterMessages(desc turnpike.Call) <-chan Result[*ChatEvent] {
+	data := make(chan Result[*ChatEvent])
+
+	traceID := uuid.New().String()
+	log := chat.client.log.WithFields(logrus.Fields{
+		"trace_id": traceID,
+		"channel":  desc.ArgumentsKw["chat_name"],
+	})
+
 	go func() {
-		buffer, _, next, err := chat.ListMessages(desc)
-		if err != nil {
-			panic(err) // shrug emoji
-		}
-
-		if len(buffer) == 0 {
-			close(output)
-			return
-		}
-
-		for _, event := range buffer {
-			output <- event
-		}
-
-		for next != 0 {
-			desc.ArgumentsKw["next"] = next
-			buffer, _, next, err = chat.ListMessages(desc)
+		defer close(data)
+		for {
+			buffer, _, next, err := chat.ListMessages(desc)
 			if err != nil {
-				panic(err) // eye roll emoji
+				log.Trace("failed to get a message page, exiting")
+				data <- Result[*ChatEvent]{Err: err}
+				return
 			}
 
 			for _, event := range buffer {
-				output <- event
+				data <- Result[*ChatEvent]{V: event}
 			}
-		}
 
-		close(output)
+			if next == 0 || len(buffer) == 0 {
+				log.Trace("reached the end of the channel, exiting")
+				return
+			}
+
+			desc.ArgumentsKw["next"] = next
+		}
 	}()
 
-	return output
+	return data
 }
