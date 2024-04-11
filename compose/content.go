@@ -11,6 +11,9 @@ func ContentByID(id string) Request {
 
 func Feed(feed string, limit int, page Page[string]) Request {
 	q := url.Values{"limit": []string{fmt.Sprint(limit)}}
+	if page.Key != NONE {
+		q.Set(string(page.Key), page.Value)
+	}
 	if feed == "collective" {
 		return Request{"POST", "/feeds/collective", nil, q}
 	}
@@ -19,5 +22,9 @@ func Feed(feed string, limit int, page Page[string]) Request {
 }
 
 func Timeline(id string, limit int, page Page[string]) Request {
-	return Feed("/timelines/users/"+id, limit, page)
+	q := url.Values{"limit": []string{fmt.Sprint(limit)}}
+	if page.Key != NONE {
+		q.Set(string(page.Key), page.Value)
+	}
+	return get("/timelines/users/"+id, q)
 }
