@@ -26,7 +26,7 @@ func main() {
 	printContent(content)
 
 	feed := "featured"
-	page, err := client.GetFeedPage(feed, 5, compose.NoPage[string]())
+	page, err := client.GetFeedPage(compose.Feed(feed, 5, compose.NoPage[string]()))
 	if err != nil {
 		panic(err)
 	}
@@ -40,7 +40,7 @@ func main() {
 		fmt.Println("that was the end of the feed")
 	}
 
-	page, err = client.GetFeedPage(feed, 5, compose.Next(page.Paging.Cursors.Next))
+	page, err = client.GetFeedPage(compose.Feed(feed, 5, compose.Next(page.Paging.Cursors.Next)))
 	if err != nil {
 		panic(err)
 	}

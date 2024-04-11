@@ -88,14 +88,14 @@ func (client *Client) GetContent(id string) (*Content, error) {
 	return &content.Data, err
 }
 
-func (client *Client) GetFeedPage(feed string, limit int, page compose.Page[string]) (*FeedPage, error) {
+func (client *Client) GetFeedPage(request compose.Request) (*FeedPage, error) {
 	content := new(struct {
 		Data struct {
 			Content FeedPage `json:"content"`
 		} `json:"data"`
 	})
 
-	err := client.RequestJSON(compose.Feed(feed, limit, page), content)
+	err := client.RequestJSON(request, content)
 	return &content.Data.Content, err
 }
 
@@ -103,7 +103,7 @@ func (client *Client) GetFeedPage(feed string, limit int, page compose.Page[stri
 
 // }
 
-func (client *Client) IterFeed(feed string) <-chan Result[*Content] {
+func (client *Client) IterFeed(feed string, composer func(string, int, compose.Page[string]) compose.Request) <-chan Result[*Content] {
 	page := compose.NoPage[string]()
 	data := make(chan Result[*Content])
 
@@ -117,7 +117,7 @@ func (client *Client) IterFeed(feed string) <-chan Result[*Content] {
 		defer close(data)
 		for {
 			log.Trace("buffering a feed page")
-			items, err := client.GetFeedPage(feed, 30, page)
+			items, err := client.GetFeedPage(composer(feed, 30, page))
 			if err != nil {
 				log.Trace("failed to get a feed page, exiting")
 				data <- Result[*Content]{Err: err}
