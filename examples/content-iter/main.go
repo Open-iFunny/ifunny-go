@@ -17,7 +17,7 @@ func printContent(c *ifunny.Content) {
 }
 
 func main() {
-	client, _ := ifunny.MakeClient(bearer, userAgent)
+	client, _ := ifunny.MakeClient(ifunny.BEARER, bearer, userAgent)
 
 	fmt.Println("iterating features")
 	iter := client.IterFeed("featured", compose.Feed)

@@ -15,6 +15,10 @@ const (
 )
 
 func (client *Client) Chat() (*Chat, error) {
+	if client.scheme != BEARER {
+		return nil, fmt.Errorf("cannot connect to chat without bearer token")
+	}
+
 	log := client.log.WithField("trace_id", uuid.New().String())
 
 	log.Trace("start connect chat")
@@ -25,7 +29,7 @@ func (client *Client) Chat() (*Chat, error) {
 	}
 
 	log.Trace("join realm ifunny")
-	ws.Auth = map[string]turnpike.AuthFunc{"ticket": turnpike.NewTicketAuthenticator(client.bearer)}
+	ws.Auth = map[string]turnpike.AuthFunc{"ticket": turnpike.NewTicketAuthenticator(client.token)}
 	hello, err := ws.JoinRealm(string(compose.URI("ifunny")), nil)
 	if err != nil {
 		log.Error(err)

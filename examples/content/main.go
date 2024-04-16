@@ -17,7 +17,7 @@ func printContent(c *ifunny.Content) {
 }
 
 func main() {
-	client, _ := ifunny.MakeClient(bearer, userAgent)
+	client, _ := ifunny.MakeClient(ifunny.BEARER, bearer, userAgent)
 	content, err := client.GetContent("lgzM46Im9")
 	if err != nil {
 		panic(err)

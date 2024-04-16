@@ -12,7 +12,7 @@ var bearer = os.Getenv("IFUNNY_BEARER")
 var userAgent = os.Getenv("IFUNNY_USER_AGENT")
 
 func main() {
-	client, _ := ifunny.MakeClient(bearer, userAgent)
+	client, _ := ifunny.MakeClient(ifunny.BEARER, bearer, userAgent)
 	chat, _ := client.Chat()
 
 	channels, err := client.GetChannels(compose.ChatsTrending)

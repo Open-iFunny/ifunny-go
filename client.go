@@ -18,22 +18,32 @@ const (
 	LogLevel = logrus.InfoLevel
 )
 
-func MakeClient(bearer, userAgent string) (*Client, error) {
-	client := &Client{bearer, userAgent, http.DefaultClient, logrus.New(), nil}
+type authScheme string
+
+const (
+	BEARER = authScheme("bearer")
+	BASIC  = authScheme("basic")
+)
+
+func MakeClient(scheme authScheme, token, userAgent string) (*Client, error) {
+	client := &Client{scheme, token, userAgent, http.DefaultClient, logrus.New(), nil}
 	client.log.SetFormatter(&logrus.JSONFormatter{})
 	client.log.SetLevel(LogLevel)
 
-	self, err := client.GetUser(compose.UserAccount())
-	if err != nil {
-		return nil, err
+	if scheme == BEARER {
+		self, err := client.GetUser(compose.UserAccount())
+		if err != nil {
+			return nil, err
+		}
+
+		client.Self = self
 	}
 
-	client.Self = self
 	return client, nil
 }
 
-func MakeClientLog(bearer, userAgent string, log *logrus.Logger) (*Client, error) {
-	client, err := MakeClient(bearer, userAgent)
+func MakeClientLog(scheme authScheme, token, userAgent string, log *logrus.Logger) (*Client, error) {
+	client, err := MakeClient(scheme, token, userAgent)
 	if err != nil {
 		return nil, err
 	}
@@ -43,9 +53,10 @@ func MakeClientLog(bearer, userAgent string, log *logrus.Logger) (*Client, error
 }
 
 type Client struct {
-	bearer, userAgent string
-	http              *http.Client
-	log               *logrus.Logger
+	scheme           authScheme
+	token, userAgent string
+	http             *http.Client
+	log              *logrus.Logger
 
 	Self *User
 }
@@ -99,7 +110,7 @@ func request(desc compose.Request, header http.Header, client *http.Client) (*ht
 
 func (client *Client) header() http.Header {
 	return http.Header{
-		"authorization":     []string{"bearer " + client.bearer},
+		"authorization":     []string{string(client.scheme) + " " + client.token},
 		"user-agent":        []string{client.userAgent},
 		"ifunny-project-id": []string{projectID},
 	}
