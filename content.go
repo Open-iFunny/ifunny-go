@@ -66,7 +66,7 @@ type Content struct {
 	} `json:"video_clip,omitempty"`
 }
 
-type FeedCursor struct {
+type Cursor struct {
 	Cursors struct {
 		Next string `json:"next,omitempty"`
 		Prev string `json:"prev,omitempty"`
@@ -76,8 +76,8 @@ type FeedCursor struct {
 }
 
 type FeedPage struct {
-	Items  []Content  `json:"items"`
-	Paging FeedCursor `json:"paging"`
+	Items  []Content `json:"items"`
+	Paging Cursor    `json:"paging"`
 }
 
 func (client *Client) GetContent(id string) (*Content, error) {

@@ -29,7 +29,7 @@ type ChatChannel struct {
 type ChatChannelPage struct {
 	Channels struct {
 		Items  []*ChatChannel `json:"items"`
-		Paging FeedCursor     `json:"paging"`
+		Paging Cursor         `json:"paging"`
 	} `json:"channels"`
 	Num int `json:"num"`
 }
