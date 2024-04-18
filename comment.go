@@ -51,11 +51,6 @@ type Comment struct {
 	} `json:"content_thumbs"`
 }
 
-type Page[T Comment | Content] struct {
-	Items  []T    `json:"items"`
-	Paging Cursor `json:"paging"`
-}
-
 func (client *Client) GetCommentPage(request compose.Request) (*Page[Comment], error) {
 	content := new(struct {
 		Data struct {

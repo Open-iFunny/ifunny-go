@@ -1,5 +1,10 @@
 package ifunny
 
+type Page[T Comment | Content] struct {
+	Items  []T    `json:"items"`
+	Paging Cursor `json:"paging"`
+}
+
 type Result[T any] struct {
 	V   T
 	Err error

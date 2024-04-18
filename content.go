@@ -75,11 +75,6 @@ type Cursor struct {
 	HasPrev bool `json:"hasPrev"`
 }
 
-type FeedPage struct {
-	Items  []Content `json:"items"`
-	Paging Cursor    `json:"paging"`
-}
-
 func (client *Client) GetContent(id string) (*Content, error) {
 	content := new(struct {
 		Data Content `json:"data"`
@@ -88,10 +83,10 @@ func (client *Client) GetContent(id string) (*Content, error) {
 	return &content.Data, err
 }
 
-func (client *Client) GetFeedPage(request compose.Request) (*FeedPage, error) {
+func (client *Client) GetFeedPage(request compose.Request) (*Page[Content], error) {
 	content := new(struct {
 		Data struct {
-			Content FeedPage `json:"content"`
+			Content Page[Content] `json:"content"`
 		} `json:"data"`
 	})
 
