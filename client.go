@@ -83,7 +83,7 @@ func request(desc compose.Request, header http.Header, client *http.Client) (*ht
 			Msg []byte `json:"msg"`
 		})
 		if err := json.Unmarshal(b, unwrap); err != nil {
-			return nil, fmt.Errorf("failed to unwrap HTTP error: %s", err)
+			return nil, fmt.Errorf("failed to unwrap HTTP error: %s, body: %s", err, string(b))
 		}
 
 		apiErr := new(APIError)
