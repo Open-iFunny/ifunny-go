@@ -94,11 +94,24 @@ func (client *Client) GetFeedPage(request compose.Request) (*Page[Content], erro
 	return &content.Data.Content, err
 }
 
+func (client *Client) GetExplorePage(request compose.Request) (*Page[Content], error) {
+	content := new(struct {
+		Data struct {
+			Value struct {
+				Context Page[Content] `json:"context"`
+			} `json:"value"`
+		} `json:"data"`
+	})
+
+	err := client.RequestJSON(request, content)
+	return &content.Data.Value.Context, err
+}
+
 // func (client *Client) IterFeed(feed string) Iterator[*Content] {
 
 // }
 
-func (client *Client) IterFeed(feed string, composer func(string, int, compose.Page[string]) compose.Request) <-chan Result[*Content] {
+func (client *Client) IterFeed(feed string, composer func(string, int, compose.Page[string]) compose.Request, feeder func(compose.Request) (*Page[Content], error)) <-chan Result[*Content] {
 	page := compose.NoPage[string]()
 	data := make(chan Result[*Content])
 
@@ -112,7 +125,7 @@ func (client *Client) IterFeed(feed string, composer func(string, int, compose.P
 		defer close(data)
 		for {
 			log.Trace("buffering a feed page")
-			items, err := client.GetFeedPage(composer(feed, 30, page))
+			items, err := feeder(composer(feed, 30, page))
 			if err != nil {
 				log.Trace("failed to get a feed page, exiting")
 				data <- Result[*Content]{Err: err}

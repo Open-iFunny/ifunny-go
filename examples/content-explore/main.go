@@ -19,25 +19,18 @@ func printContent(c *ifunny.Content) {
 func main() {
 	client, _ := ifunny.MakeClient(bearer, userAgent)
 
-	fmt.Println("iterating features")
-	iter := client.IterFeed("featured", compose.Feed, client.GetFeedPage)
-	for i := 0; i < 60; i++ {
-		r := <-iter
-		if r.Err != nil {
-			panic(r.Err)
-		}
-
-		if r.V == nil {
-			break
-		}
-
-		fmt.Printf("%+v", r)
-		printContent(r.V)
+	page, err := client.GetExplorePage(compose.Explore("content_shuffle", 30, compose.NoPage[string]()))
+	if err != nil {
+		panic(err)
 	}
 
-	fmt.Println("iterating our timeline")
-	iter = client.IterFeed(client.Self.ID, compose.Timeline, client.GetFeedPage)
-	for i := 0; i < 60; i++ {
+	fmt.Printf("got %d items from explore!\n", len(page.Items))
+	for _, c := range page.Items {
+		printContent(&c)
+	}
+
+	iter := client.IterFeed("category-science-tech", compose.Explore, client.GetExplorePage)
+	for i := 0; i < 120; i++ {
 		r := <-iter
 		if r.Err != nil {
 			panic(r.Err)
