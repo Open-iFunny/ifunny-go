@@ -1,9 +1,7 @@
 package ifunny
 
 import (
-	"github.com/google/uuid"
 	"github.com/open-ifunny/ifunny-go/compose"
-	"github.com/sirupsen/logrus"
 )
 
 type Comment struct {
@@ -63,41 +61,5 @@ func (client *Client) GetCommentPage(request compose.Request) (*Page[Comment], e
 }
 
 func (client *Client) IterComments(id string) <-chan Result[*Comment] {
-	page := compose.NoPage[string]()
-	data := make(chan Result[*Comment])
-
-	traceID := uuid.New().String()
-	log := client.log.WithFields(logrus.Fields{
-		"trace_id": traceID,
-		"content":  id,
-	})
-
-	go func() {
-		defer close(data)
-		for {
-			log.Trace("buffering a comment page")
-			items, err := client.GetCommentPage(compose.Comments(id, 30, page))
-			if err != nil {
-				log.Trace("failed to get a comment page, exiting")
-				data <- Result[*Comment]{Err: err}
-				return
-			}
-
-			for _, v := range items.Items {
-				data <- Result[*Comment]{V: &v}
-			}
-
-			log.Tracef("next: %s, has next: %t",
-				items.Paging.Cursors.Next, items.Paging.HasNext)
-
-			if !items.Paging.HasNext {
-				log.Trace("no next page, exiting")
-				return
-			}
-
-			page = compose.Next(items.Paging.Cursors.Next)
-		}
-	}()
-
-	return data
+	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request { return compose.Comments(id, limit, page) }, client.GetCommentPage)
 }

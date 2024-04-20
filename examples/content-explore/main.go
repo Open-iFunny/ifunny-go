@@ -29,7 +29,7 @@ func main() {
 		printContent(&c)
 	}
 
-	iter := client.IterFeed("category-science-tech", compose.Explore, client.GetExplorePage)
+	iter := client.IterExplore("category-science-tech")
 	for i := 0; i < 120; i++ {
 		r := <-iter
 		if r.Err != nil {

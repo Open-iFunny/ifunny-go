@@ -1,6 +1,12 @@
 package ifunny
 
-type Page[T Comment | Content] struct {
+import (
+	"github.com/google/uuid"
+	"github.com/open-ifunny/ifunny-go/compose"
+	"github.com/sirupsen/logrus"
+)
+
+type Page[T Comment | Content | User] struct {
 	Items  []T    `json:"items"`
 	Paging Cursor `json:"paging"`
 }
@@ -15,42 +21,41 @@ type Iterator[T any] struct {
 	Stop func()
 }
 
-func iterFrom[T any](next func() (T, bool, error)) Iterator[T] {
-	done := make(chan struct{})
-	inner, outer := make(chan Result[T]), make(chan Result[T])
-	return Iterator[T]{
-		Stop: func() {
-			close(done)
-		},
-		Iter: func() <-chan Result[T] {
-			go func() {
-				for {
-					v, more, err := next()
-					if err != nil {
-						inner <- Result[T]{Err: err}
-						return
-					}
+func iterFrom[T Content | Comment | User](client *Client, composer func(limit int, page compose.Page[string]) compose.Request, feeder func(compose.Request) (*Page[T], error)) <-chan Result[*T] {
+	page := compose.NoPage[string]()
+	data := make(chan Result[*T])
 
-					if !more {
-						close(done)
-						return
-					}
+	traceID := uuid.New().String()
+	log := client.log.WithFields(logrus.Fields{
+		"trace_id": traceID,
+	})
 
-					inner <- Result[T]{V: v}
-				}
-			}()
+	go func() {
+		defer close(data)
+		for {
+			log.Trace("buffering a feed page")
+			items, err := feeder(composer(30, page))
+			if err != nil {
+				log.Trace("failed to get a feed page, exiting")
+				data <- Result[*T]{Err: err}
+				return
+			}
 
-			go func() {
-				select {
-				case v := <-inner:
-					outer <- v
-				case <-done:
-					close(outer)
-					return
-				}
-			}()
+			for _, v := range items.Items {
+				data <- Result[*T]{V: &v}
+			}
 
-			return outer
-		},
-	}
+			log.Tracef("next: %s, has next: %t",
+				items.Paging.Cursors.Next, items.Paging.HasNext)
+
+			if !items.Paging.HasNext {
+				log.Trace("no next page, exiting")
+				return
+			}
+
+			page = compose.Next(items.Paging.Cursors.Next)
+		}
+	}()
+
+	return data
 }

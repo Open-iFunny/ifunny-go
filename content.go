@@ -1,9 +1,7 @@
 package ifunny
 
 import (
-	"github.com/google/uuid"
 	"github.com/open-ifunny/ifunny-go/compose"
-	"github.com/sirupsen/logrus"
 )
 
 // TODO types of content, missing a bunch of content types
@@ -111,42 +109,14 @@ func (client *Client) GetExplorePage(request compose.Request) (*Page[Content], e
 
 // }
 
-func (client *Client) IterFeed(feed string, composer func(string, int, compose.Page[string]) compose.Request, feeder func(compose.Request) (*Page[Content], error)) <-chan Result[*Content] {
-	page := compose.NoPage[string]()
-	data := make(chan Result[*Content])
+func (client *Client) IterFeed(feed string) <-chan Result[*Content] {
+	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request { return compose.Feed(feed, limit, page) }, client.GetFeedPage)
+}
 
-	traceID := uuid.New().String()
-	log := client.log.WithFields(logrus.Fields{
-		"trace_id": traceID,
-		"feed":     feed,
-	})
+func (client *Client) IterTimeline(id string) <-chan Result[*Content] {
+	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request { return compose.Timeline(id, limit, page) }, client.GetFeedPage)
+}
 
-	go func() {
-		defer close(data)
-		for {
-			log.Trace("buffering a feed page")
-			items, err := feeder(composer(feed, 30, page))
-			if err != nil {
-				log.Trace("failed to get a feed page, exiting")
-				data <- Result[*Content]{Err: err}
-				return
-			}
-
-			for _, v := range items.Items {
-				data <- Result[*Content]{V: &v}
-			}
-
-			log.Tracef("next: %s, has next: %t",
-				items.Paging.Cursors.Next, items.Paging.HasNext)
-
-			if !items.Paging.HasNext {
-				log.Trace("no next page, exiting")
-				return
-			}
-
-			page = compose.Next(items.Paging.Cursors.Next)
-		}
-	}()
-
-	return data
+func (client *Client) IterExplore(comp string) <-chan Result[*Content] {
+	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request { return compose.Explore(comp, limit, page) }, client.GetExplorePage)
 }
