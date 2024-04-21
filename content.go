@@ -92,19 +92,6 @@ func (client *Client) GetFeedPage(request compose.Request) (*Page[Content], erro
 	return &content.Data.Content, err
 }
 
-func (client *Client) GetExplorePage(request compose.Request) (*Page[Content], error) {
-	content := new(struct {
-		Data struct {
-			Value struct {
-				Context Page[Content] `json:"context"`
-			} `json:"value"`
-		} `json:"data"`
-	})
-
-	err := client.RequestJSON(request, content)
-	return &content.Data.Value.Context, err
-}
-
 // func (client *Client) IterFeed(feed string) Iterator[*Content] {
 
 // }
@@ -115,8 +102,4 @@ func (client *Client) IterFeed(feed string) <-chan Result[*Content] {
 
 func (client *Client) IterTimeline(id string) <-chan Result[*Content] {
 	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request { return compose.Timeline(id, limit, page) }, client.GetFeedPage)
-}
-
-func (client *Client) IterExplore(comp string) <-chan Result[*Content] {
-	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request { return compose.Explore(comp, limit, page) }, client.GetExplorePage)
 }

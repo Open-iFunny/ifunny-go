@@ -60,6 +60,15 @@ category-movies
 category-other
 category-politics
 category-science-tech
+
+users_top_by_featured
+users_top_by_subscribers
+users_top_by_content_views
+users_top_overall
+
+chats_popular_last_week
+chats_new_chats
+chats_top_by_members
 */
 func Explore(id string, limit int, page Page[string]) Request {
 	return Request{"POST", "/explore/compilation/" + id, nil, feedParams(limit, page)}
