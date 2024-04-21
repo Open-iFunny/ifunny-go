@@ -97,39 +97,20 @@ func (client *Client) GetChannels(desc compose.Request) ([]*ChatChannel, error) 
 	return output.Data.Channels, err
 }
 
-func (client *Client) GetChannelsPage(desc compose.Request) (*ChatChannelPage, error) {
+func (client *Client) GetChannelsPage(desc compose.Request) (*Page[ChatChannel], error) {
 	output := new(struct {
-		Data ChatChannelPage `json:"data"`
+		Data struct {
+			Channels Page[ChatChannel] `json:"channels"`
+		} `json:"data"`
 	})
 	err := client.RequestJSON(desc, output)
-	return &output.Data, err
+	return &output.Data.Channels, err
 }
 
-func (client *Client) IterChannels(desc compose.Request) <-chan *ChatChannel {
-	output := make(chan *ChatChannel)
-
-	go func() {
-		for {
-			page, err := client.GetChannelsPage(desc)
-			if err != nil {
-				panic(err)
-			}
-
-			for _, channel := range page.Channels.Items {
-				output <- channel
-			}
-
-			if !page.Channels.Paging.HasNext {
-				break
-			}
-
-			desc.Query.Set("next", page.Channels.Paging.Cursors.Next)
-		}
-
-		close(output)
-	}()
-
-	return output
+func (client *Client) IterChannelsQuery(query string) <-chan Result[*ChatChannel] {
+	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request {
+		return compose.ChatsQuery(query, limit, page)
+	}, client.GetChannelsPage)
 }
 
 func (client *Client) DMChannelName(them ...string) string {

@@ -6,7 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type Page[T Comment | Content | User] struct {
+type Page[T Comment | Content | User | ChatChannel] struct {
 	Items  []T    `json:"items"`
 	Paging Cursor `json:"paging"`
 }
@@ -21,7 +21,7 @@ type Iterator[T any] struct {
 	Stop func()
 }
 
-func iterFrom[T Content | Comment | User](client *Client, composer func(limit int, page compose.Page[string]) compose.Request, feeder func(compose.Request) (*Page[T], error)) <-chan Result[*T] {
+func iterFrom[T Content | Comment | User | ChatChannel](client *Client, composer func(limit int, page compose.Page[string]) compose.Request, feeder func(compose.Request) (*Page[T], error)) <-chan Result[*T] {
 	page := compose.NoPage[string]()
 	data := make(chan Result[*T])
 
