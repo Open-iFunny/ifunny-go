@@ -45,6 +45,33 @@ func (client *Client) GetUser(desc compose.Request) (*User, error) {
 	return &user.Data, err
 }
 
+// GetUsersPage fetches a page of any endpoint whose envelope is
+// data.users: content smiles, content republishers, user subscribers, and
+// user subscriptions. These endpoints return a reduced projection of User
+// (no email/privacy fields); absent fields are simply zero-valued.
+func (client *Client) GetUsersPage(request compose.Request) (*Page[User], error) {
+	users := new(struct {
+		Data struct {
+			Users Page[User] `json:"users"`
+		} `json:"data"`
+	})
+
+	err := client.RequestJSON(request, users)
+	return &users.Data.Users, err
+}
+
+func (client *Client) IterSubscribers(id string) <-chan Result[*User] {
+	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request {
+		return compose.Subscribers(id, limit, page)
+	}, client.GetUsersPage)
+}
+
+func (client *Client) IterSubscriptions(id string) <-chan Result[*User] {
+	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request {
+		return compose.Subscriptions(id, limit, page)
+	}, client.GetUsersPage)
+}
+
 func (chat *Chat) GetUsers(desc turnpike.Call) ([]*User, error) {
 	output := new(struct {
 		Users []*User `json:"users"`

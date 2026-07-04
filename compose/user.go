@@ -37,3 +37,11 @@ func UserByNick(nick string) Request {
 func UserAccount() Request {
 	return get("/account", nil)
 }
+
+func Subscribers(id string, limit int, page Page[string]) Request {
+	return get("/users/"+id+"/subscribers", feedParams(limit, page))
+}
+
+func Subscriptions(id string, limit int, page Page[string]) Request {
+	return get("/users/"+id+"/subscriptions", feedParams(limit, page))
+}

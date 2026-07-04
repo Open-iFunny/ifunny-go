@@ -103,3 +103,19 @@ func (client *Client) IterFeed(feed string) <-chan Result[*Content] {
 func (client *Client) IterTimeline(id string) <-chan Result[*Content] {
 	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request { return compose.Timeline(id, limit, page) }, client.GetFeedPage)
 }
+
+func (client *Client) IterTimelineByNick(nick string) <-chan Result[*Content] {
+	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request {
+		return compose.TimelineByNick(nick, limit, page)
+	}, client.GetFeedPage)
+}
+
+func (client *Client) IterSmiles(id string) <-chan Result[*User] {
+	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request { return compose.Smiles(id, limit, page) }, client.GetUsersPage)
+}
+
+func (client *Client) IterRepublishers(id string) <-chan Result[*User] {
+	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request {
+		return compose.Republished(id, limit, page)
+	}, client.GetUsersPage)
+}

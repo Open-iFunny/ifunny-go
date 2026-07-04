@@ -63,3 +63,20 @@ func (client *Client) GetCommentPage(request compose.Request) (*Page[Comment], e
 func (client *Client) IterComments(id string) <-chan Result[*Comment] {
 	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request { return compose.Comments(id, limit, page) }, client.GetCommentPage)
 }
+
+func (client *Client) GetRepliesPage(request compose.Request) (*Page[Comment], error) {
+	content := new(struct {
+		Data struct {
+			Replies Page[Comment] `json:"replies"`
+		} `json:"data"`
+	})
+
+	err := client.RequestJSON(request, content)
+	return &content.Data.Replies, err
+}
+
+func (client *Client) IterReplies(cid, id string) <-chan Result[*Comment] {
+	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request {
+		return compose.Replies(cid, id, limit, page)
+	}, client.GetRepliesPage)
+}

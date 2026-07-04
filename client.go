@@ -2,6 +2,7 @@ package ifunny
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,10 +19,21 @@ const (
 	LogLevel = logrus.InfoLevel
 )
 
+func newClient(authorization, userAgent string) *Client {
+	log := logrus.New()
+	log.SetFormatter(&logrus.JSONFormatter{})
+	log.SetLevel(LogLevel)
+	return &Client{
+		userAgent:     userAgent,
+		authorization: authorization,
+		http:          http.DefaultClient,
+		log:           log,
+	}
+}
+
 func MakeClient(bearer, userAgent string) (*Client, error) {
-	client := &Client{bearer, userAgent, http.DefaultClient, logrus.New(), nil}
-	client.log.SetFormatter(&logrus.JSONFormatter{})
-	client.log.SetLevel(LogLevel)
+	client := newClient("bearer "+bearer, userAgent)
+	client.bearer = bearer
 
 	self, err := client.GetUser(compose.UserAccount())
 	if err != nil {
@@ -30,6 +42,14 @@ func MakeClient(bearer, userAgent string) (*Client, error) {
 
 	client.Self = self
 	return client, nil
+}
+
+// MakeClientBasic builds a client that authenticates with a primed basic token
+// (Authorization: Basic <basic>). Unlike MakeClient it does not fetch /account
+// (a basic token can't), so Self is nil. Chat requires a bearer and does not
+// work on a basic client.
+func MakeClientBasic(basic, userAgent string) (*Client, error) {
+	return newClient("Basic "+basic, userAgent), nil
 }
 
 func MakeClientLog(bearer, userAgent string, log *logrus.Logger) (*Client, error) {
@@ -44,6 +64,7 @@ func MakeClientLog(bearer, userAgent string, log *logrus.Logger) (*Client, error
 
 type Client struct {
 	bearer, userAgent string
+	authorization     string
 	http              *http.Client
 	log               *logrus.Logger
 
@@ -58,6 +79,16 @@ type APIError struct {
 
 func (e APIError) Error() string {
 	return fmt.Sprintf("HTTP %d: %s: %s", e.Status, e.Kind, e.Description)
+}
+
+// AsAPIError unwraps err into an *APIError. The client returns API errors
+// as *APIError, so use this rather than asserting on the value type.
+func AsAPIError(err error) (*APIError, bool) {
+	apiErr := new(APIError)
+	if errors.As(err, &apiErr) {
+		return apiErr, true
+	}
+	return nil, false
 }
 
 func request(desc compose.Request, header http.Header, client *http.Client) (*http.Response, error) {
@@ -99,7 +130,7 @@ func request(desc compose.Request, header http.Header, client *http.Client) (*ht
 
 func (client *Client) header() http.Header {
 	return http.Header{
-		"authorization":     []string{"bearer " + client.bearer},
+		"authorization":     []string{client.authorization},
 		"user-agent":        []string{client.userAgent},
 		"ifunny-project-id": []string{projectID},
 	}

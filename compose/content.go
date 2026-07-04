@@ -29,6 +29,18 @@ func Timeline(id string, limit int, page Page[string]) Request {
 	return get("/timelines/users/"+id, feedParams(limit, page))
 }
 
+func TimelineByNick(nick string, limit int, page Page[string]) Request {
+	return get("/timelines/users/by_nick/"+nick, feedParams(limit, page))
+}
+
+func Smiles(id string, limit int, page Page[string]) Request {
+	return get("/content/"+id+"/smiles", feedParams(limit, page))
+}
+
+func Republished(id string, limit int, page Page[string]) Request {
+	return get("/content/"+id+"/republished", feedParams(limit, page))
+}
+
 /*
 content_top_today
 content_top_this_week

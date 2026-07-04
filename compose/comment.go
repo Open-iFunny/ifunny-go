@@ -13,3 +13,7 @@ func Comments(id string, limit int, page Page[string]) Request {
 
 	return get("/content/"+id+"/comments", q)
 }
+
+func Replies(cid, id string, limit int, page Page[string]) Request {
+	return get("/content/"+cid+"/comments/"+id+"/replies", feedParams(limit, page))
+}
