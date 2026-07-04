@@ -19,20 +19,39 @@ const (
 	LogLevel = logrus.InfoLevel
 )
 
-func newClient(authorization, userAgent string) *Client {
+// Option configures a Client at construction time. Options are applied before
+// any network call the constructor makes (e.g. MakeClient's /account fetch),
+// so WithHTTPClient also governs the initial login request.
+type Option func(*Client)
+
+// WithHTTPClient sets the underlying *http.Client used for all iFunny API
+// requests. A nil client is ignored, leaving the default in place.
+func WithHTTPClient(h *http.Client) Option {
+	return func(c *Client) {
+		if h != nil {
+			c.http = h
+		}
+	}
+}
+
+func newClient(authorization, userAgent string, opts ...Option) *Client {
 	log := logrus.New()
 	log.SetFormatter(&logrus.JSONFormatter{})
 	log.SetLevel(LogLevel)
-	return &Client{
+	c := &Client{
 		userAgent:     userAgent,
 		authorization: authorization,
 		http:          http.DefaultClient,
 		log:           log,
 	}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
 }
 
-func MakeClient(bearer, userAgent string) (*Client, error) {
-	client := newClient("bearer "+bearer, userAgent)
+func MakeClient(bearer, userAgent string, opts ...Option) (*Client, error) {
+	client := newClient("bearer "+bearer, userAgent, opts...)
 	client.bearer = bearer
 
 	self, err := client.GetUser(compose.UserAccount())
@@ -47,13 +66,14 @@ func MakeClient(bearer, userAgent string) (*Client, error) {
 // MakeClientBasic builds a client that authenticates with a primed basic token
 // (Authorization: Basic <basic>). Unlike MakeClient it does not fetch /account
 // (a basic token can't), so Self is nil. Chat requires a bearer and does not
-// work on a basic client.
-func MakeClientBasic(basic, userAgent string) (*Client, error) {
-	return newClient("Basic "+basic, userAgent), nil
+// work on a basic client. Call (*Client).PrimeBasic once on a freshly generated
+// token before making other requests.
+func MakeClientBasic(basic, userAgent string, opts ...Option) (*Client, error) {
+	return newClient("Basic "+basic, userAgent, opts...), nil
 }
 
-func MakeClientLog(bearer, userAgent string, log *logrus.Logger) (*Client, error) {
-	client, err := MakeClient(bearer, userAgent)
+func MakeClientLog(bearer, userAgent string, log *logrus.Logger, opts ...Option) (*Client, error) {
+	client, err := MakeClient(bearer, userAgent, opts...)
 	if err != nil {
 		return nil, err
 	}

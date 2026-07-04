@@ -32,19 +32,18 @@ func GenerateBasic() (string, error) {
 	return base64.StdEncoding.EncodeToString([]byte(a + hex.EncodeToString(sum[:]))), nil
 }
 
-// PrimeBasic activates a basic token: one GET /counters authenticated with the
-// token as Basic auth, then the server-side ~15s wait. Call once before first
-// use of a freshly generated token.
-func PrimeBasic(basic, userAgent string) error {
+// PrimeBasic activates the basic token this client was constructed with: one
+// GET /counters, then the server-side ~15s wait. Call once on a freshly
+// generated token before making other requests. Uses the client's configured
+// *http.Client, so any custom transport/timeouts are honored.
+func (client *Client) PrimeBasic() error {
 	req, err := http.NewRequest("GET", apiRoot+"/counters", nil)
 	if err != nil {
 		return err
 	}
-	req.Header.Set("authorization", "Basic "+basic)
-	req.Header.Set("user-agent", userAgent)
-	req.Header.Set("ifunny-project-id", projectID)
+	req.Header = client.header()
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.http.Do(req)
 	if err != nil {
 		return err
 	}
