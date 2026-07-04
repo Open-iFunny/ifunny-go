@@ -41,8 +41,8 @@ func iterFrom[T Content | Comment | User | ChatChannel](client *Client, composer
 				return
 			}
 
-			for _, v := range items.Items {
-				data <- Result[*T]{V: &v}
+			for i := range items.Items {
+				data <- Result[*T]{V: &items.Items[i]}
 			}
 
 			log.Tracef("next: %s, has next: %t",
