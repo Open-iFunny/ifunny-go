@@ -14,6 +14,8 @@ const (
 	chatRoot = "wss://chat.ifunny.co/chat"
 )
 
+// Chat establishes a WebSocket connection to the iFunny chat API using the client's
+// bearer token. Returns an error if authentication or connection fails.
 func (client *Client) Chat() (*Chat, error) {
 	log := client.log.WithField("trace_id", uuid.New().String())
 
@@ -35,13 +37,19 @@ func (client *Client) Chat() (*Chat, error) {
 	return &Chat{ws, client, hello}, nil
 }
 
+// Chat is a WebSocket connection to the iFunny chat API. It provides methods to
+// call remote procedures (Call), publish messages (Publish), and subscribe to events
+// (Subscribe). Use (*Client).Chat() to create a connection.
 type Chat struct {
 	ws     *turnpike.Client
 	client *Client
-	hello  map[string]interface{}
+	hello  map[string]any
 }
 
-func JSONDecode(data, output interface{}) error {
+// JSONDecode unmarshals a map or JSON-like structure into output, treating JSON
+// tags on the output struct's fields as field name mappings. It is a convenience
+// wrapper around mapstructure.Decode that is used throughout chat event handling.
+func JSONDecode(data, output any) error {
 	config := &mapstructure.DecoderConfig{TagName: "json", Result: output, WeaklyTypedInput: true}
 	if decode, err := mapstructure.NewDecoder(config); err != nil {
 		return err
@@ -50,7 +58,9 @@ func JSONDecode(data, output interface{}) error {
 	}
 }
 
-func (chat *Chat) Call(desc turnpike.Call, output interface{}) error {
+// Call executes a remote procedure call (RPC) and unmarshals the result into output.
+// Returns an error if the call fails or unmarshaling fails.
+func (chat *Chat) Call(desc turnpike.Call, output any) error {
 	log := chat.client.log.WithFields(logrus.Fields{
 		"trace_id": uuid.New().String(),
 		"type":     "CALL",
@@ -78,6 +88,7 @@ func (chat *Chat) Call(desc turnpike.Call, output interface{}) error {
 	return nil
 }
 
+// Publish publishes a message to a topic. Returns an error if the publish fails.
 func (chat *Chat) Publish(desc turnpike.Publish) error {
 	log := chat.client.log.WithFields(logrus.Fields{
 		"trace_id": uuid.New().String(),
@@ -95,6 +106,8 @@ func (chat *Chat) Publish(desc turnpike.Publish) error {
 	return err
 }
 
+// Subscribe subscribes to a topic and calls handle for each event. Returns an
+// unsubscribe function and an error if subscription fails.
 func (chat *Chat) Subscribe(desc turnpike.Subscribe, handle EventHandler) (func(), error) {
 	log := chat.client.log.WithFields(logrus.Fields{
 		"trace_id": uuid.New().String(),
@@ -104,7 +117,7 @@ func (chat *Chat) Subscribe(desc turnpike.Subscribe, handle EventHandler) (func(
 	})
 
 	log.Trace("exec subscribe")
-	err := chat.ws.Subscribe(string(desc.Topic), desc.Options, func(args []interface{}, kwargs map[string]interface{}) {
+	err := chat.ws.Subscribe(string(desc.Topic), desc.Options, func(args []any, kwargs map[string]any) {
 		eType := 0
 		if err := JSONDecode(kwargs["type"], &eType); err != nil {
 			log.Error(err)

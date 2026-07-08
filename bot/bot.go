@@ -22,11 +22,11 @@ type Bot struct {
 	handleEvents map[string]filtHandler
 }
 
-func MakeBot(bearer, userAgent string) (*Bot, error) {
+func MakeBot(bearer string, ua ifunny.UserAgent) (*Bot, error) {
 	log := logrus.New()
 	log.SetFormatter(&logrus.JSONFormatter{})
 	log.SetLevel(ifunny.LogLevel)
-	client, err := ifunny.MakeClientLog(bearer, userAgent, log)
+	client, err := ifunny.MakeClient(bearer, ua, ifunny.WithLogger(log))
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func (bot *Bot) Subscribe(channel string) {
 		unsub()
 	}
 
-	bot.Chat.Subscribe(compose.EventsIn(channel), func(eventType int, eventKW map[string]interface{}) error {
+	bot.Chat.Subscribe(compose.EventsIn(channel), func(eventType int, eventKW map[string]any) error {
 		log = log.WithFields(logrus.Fields{"event_type": eventType, "channel": channel})
 		log.Trace("handle event")
 

@@ -6,6 +6,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// ChatChannel represents a direct message or group chat channel. It includes the channel
+// name, title, member counts, and metadata about the current user's role and membership status.
 type ChatChannel struct {
 	Name          string `json:"name"`
 	Title         string `json:"title"`
@@ -26,6 +28,7 @@ type ChatChannel struct {
 	} `json:"user"`
 }
 
+// ChatChannelPage wraps a paginated response of chat channels and a count.
 type ChatChannelPage struct {
 	Channels struct {
 		Items  []*ChatChannel `json:"items"`
@@ -35,14 +38,14 @@ type ChatChannelPage struct {
 }
 
 func (chat *Chat) handleChannelsRaw(handle func(eventType int, channel *ChatChannel) error) EventHandler {
-	return func(eventType int, kwargs map[string]interface{}) error {
+	return func(eventType int, kwargs map[string]any) error {
 		log := chat.client.log.WithFields(logrus.Fields{"event_type": eventType, "kwargs": kwargs})
 
 		switch eventType {
 		case EVENT_JOIN, EVENT_INVITED:
 			log.Trace("handle channel joined")
 
-			for _, channelRaw := range kwargs["chats"].([]interface{}) {
+			for _, channelRaw := range kwargs["chats"].([]any) {
 				channel := new(ChatChannel)
 				if err := JSONDecode(channelRaw, channel); err != nil {
 					return err
@@ -69,14 +72,19 @@ func (chat *Chat) handleChannelsRaw(handle func(eventType int, channel *ChatChan
 	}
 }
 
+// OnChannelUpdate subscribes to channel join and invite events. The handler is called
+// with the event type and channel data. Returns an unsubscribe function.
 func (chat *Chat) OnChannelUpdate(handle func(eventType int, channel *ChatChannel) error) (func(), error) {
 	return chat.Subscribe(compose.JoinedChannels(chat.client.Self.ID), chat.handleChannelsRaw(handle))
 }
 
+// OnChannelInvite subscribes to channel invite events. The handler is called with the
+// event type and invited channel data. Returns an unsubscribe function.
 func (chat *Chat) OnChannelInvite(handle func(eventType int, channel *ChatChannel) error) (func(), error) {
 	return chat.Subscribe(compose.ReceiveInvite(chat.client.Self.ID), chat.handleChannelsRaw(handle))
 }
 
+// GetChannel executes a chat RPC call and unmarshals the result as a ChatChannel.
 func (chat *Chat) GetChannel(call turnpike.Call) (*ChatChannel, error) {
 	output := new(struct {
 		Chat *ChatChannel `json:"chat"`
@@ -86,6 +94,7 @@ func (chat *Chat) GetChannel(call turnpike.Call) (*ChatChannel, error) {
 	return output.Chat, err
 }
 
+// GetChannels fetches all chat channels matching the given request.
 func (client *Client) GetChannels(desc compose.Request) ([]*ChatChannel, error) {
 	output := new(struct {
 		Data struct {
@@ -97,6 +106,8 @@ func (client *Client) GetChannels(desc compose.Request) ([]*ChatChannel, error) 
 	return output.Data.Channels, err
 }
 
+// GetChannelsPage fetches a single page of chat channels given a composed request.
+// It is used internally by channel iteration methods and exported for advanced use cases.
 func (client *Client) GetChannelsPage(desc compose.Request) (*Page[ChatChannel], error) {
 	output := new(struct {
 		Data struct {
@@ -107,12 +118,16 @@ func (client *Client) GetChannelsPage(desc compose.Request) (*Page[ChatChannel],
 	return &output.Data.Channels, err
 }
 
+// IterChannelsQuery returns a channel that yields chat channels matching a search query.
+// The iterator automatically fetches new pages as needed.
 func (client *Client) IterChannelsQuery(query string) <-chan Result[*ChatChannel] {
 	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request {
 		return compose.ChatsQuery(query, limit, page)
 	}, client.GetChannelsPage)
 }
 
+// DMChannelName constructs a direct message channel name from the authenticated user's ID
+// and one or more recipient user IDs.
 func (client *Client) DMChannelName(them ...string) string {
 	return compose.DMChannelName(client.Self.ID, them)
 }

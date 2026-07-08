@@ -21,7 +21,7 @@ func printUser(u *ifunny.User) {
 }
 
 func main() {
-	client, _ := ifunny.MakeClient(bearer, userAgent)
+	client, _ := ifunny.MakeClient(bearer, ifunny.RawUserAgent(userAgent))
 
 	page, err := client.ExploreContentPage(compose.Explore("content_shuffle", 30, compose.NoPage[string]()))
 	if err != nil {

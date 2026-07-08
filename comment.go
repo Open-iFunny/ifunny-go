@@ -4,6 +4,9 @@ import (
 	"github.com/open-ifunny/ifunny-go/compose"
 )
 
+// Comment represents a user's comment on content. It includes the comment text,
+// author information, engagement metrics (smiles/unsmiles), and threading metadata
+// (parent, depth, etc.).
 type Comment struct {
 	ID           string `json:"id"`
 	CID          string `json:"cid"`
@@ -49,6 +52,8 @@ type Comment struct {
 	} `json:"content_thumbs"`
 }
 
+// GetCommentPage fetches a single page of comments given a composed request.
+// It is used internally by comment iteration methods and exported for advanced use cases.
 func (client *Client) GetCommentPage(request compose.Request) (*Page[Comment], error) {
 	content := new(struct {
 		Data struct {
@@ -60,6 +65,29 @@ func (client *Client) GetCommentPage(request compose.Request) (*Page[Comment], e
 	return &content.Data.Comments, err
 }
 
+// IterComments returns a channel that yields top-level comments on content (identified by ID).
+// The iterator automatically fetches new pages as needed.
 func (client *Client) IterComments(id string) <-chan Result[*Comment] {
 	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request { return compose.Comments(id, limit, page) }, client.GetCommentPage)
+}
+
+// GetRepliesPage fetches a single page of replies to a comment given a composed request.
+// It is used internally by reply iteration methods and exported for advanced use cases.
+func (client *Client) GetRepliesPage(request compose.Request) (*Page[Comment], error) {
+	content := new(struct {
+		Data struct {
+			Replies Page[Comment] `json:"replies"`
+		} `json:"data"`
+	})
+
+	err := client.RequestJSON(request, content)
+	return &content.Data.Replies, err
+}
+
+// IterReplies returns a channel that yields replies to a specific comment (identified by cid on content id).
+// The iterator automatically fetches new pages as needed.
+func (client *Client) IterReplies(cid, id string) <-chan Result[*Comment] {
+	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request {
+		return compose.Replies(cid, id, limit, page)
+	}, client.GetRepliesPage)
 }

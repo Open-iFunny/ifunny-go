@@ -17,7 +17,7 @@ func printChannel(c *ifunny.ChatChannel) {
 
 func main() {
 	q := "hello"
-	client, _ := ifunny.MakeClient(bearer, userAgent)
+	client, _ := ifunny.MakeClient(bearer, ifunny.RawUserAgent(userAgent))
 
 	fmt.Printf("iterating results for q=%s\n", q)
 	iter := client.IterChannelsQuery(q)

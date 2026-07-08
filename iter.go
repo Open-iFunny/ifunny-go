@@ -6,16 +6,24 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Page represents a paginated response from the iFunny API. It contains a slice
+// of items of type T and pagination metadata (Cursor).
 type Page[T Comment | Content | User | ChatChannel] struct {
 	Items  []T    `json:"items"`
 	Paging Cursor `json:"paging"`
 }
 
+// Result carries one item from an iterator or an error. Iterators close their
+// channel when done; a mid-iteration failure is delivered as a final Result
+// with Err set (and V zero-valued) before the channel closes.
 type Result[T any] struct {
 	V   T
 	Err error
 }
 
+// Iterator is a convenience wrapper around a channel of Results. It holds functions
+// to obtain the result channel (Iter) and to stop iteration early (Stop). Not
+// currently used by the root package; it is available for future use or custom iterators.
 type Iterator[T any] struct {
 	Iter func() <-chan Result[T]
 	Stop func()
@@ -41,8 +49,8 @@ func iterFrom[T Content | Comment | User | ChatChannel](client *Client, composer
 				return
 			}
 
-			for _, v := range items.Items {
-				data <- Result[*T]{V: &v}
+			for i := range items.Items {
+				data <- Result[*T]{V: &items.Items[i]}
 			}
 
 			log.Tracef("next: %s, has next: %t",

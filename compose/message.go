@@ -4,15 +4,13 @@ import (
 	"github.com/gastrodon/turnpike"
 )
 
-/*
-publish a text message to a channel
-*/
+// MessageTo publishes a text message to a channel.
 func MessageTo(channel, text string) turnpike.Publish {
 	return turnpike.Publish{
 		Topic:     URI("chat." + channel),
-		Options:   map[string]interface{}{"acknowledge": 1, "exclude_me": 1},
+		Options:   map[string]any{"acknowledge": 1, "exclude_me": 1},
 		Arguments: nil,
-		ArgumentsKw: map[string]interface{}{
+		ArgumentsKw: map[string]any{
 			"message_type": 1,
 			"type":         200,
 			"text":         text,
@@ -20,9 +18,7 @@ func MessageTo(channel, text string) turnpike.Publish {
 	}
 }
 
-/*
-subscribe to events happening in a channel
-*/
+// EventsIn subscribes to events and messages in a channel.
 func EventsIn(channel string) turnpike.Subscribe {
 	return turnpike.Subscribe{
 		Topic:   URI("chat." + channel),
@@ -30,10 +26,11 @@ func EventsIn(channel string) turnpike.Subscribe {
 	}
 }
 
+// ListMessages composes a call to list messages in a channel with pagination.
 func ListMessages(channel string, limit int, page Page[int]) turnpike.Call {
 	call := turnpike.Call{
 		Procedure: URI("list_messages"),
-		ArgumentsKw: map[string]interface{}{
+		ArgumentsKw: map[string]any{
 			"chat_name": channel,
 			"limit":     limit,
 		},
