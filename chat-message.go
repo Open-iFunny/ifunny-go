@@ -7,16 +7,19 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Message type constants for chat events.
 const (
-	UNK_0 messageType = iota
-	TEXT_MESSAGE
-	UNK_2
-	JOIN_CHANNEL
-	EXIT_CHANNEL
+	UNK_0        messageType = iota // Unknown type 0
+	TEXT_MESSAGE                    // Text message
+	UNK_2                           // Unknown type 2
+	JOIN_CHANNEL                    // User joined channel
+	EXIT_CHANNEL                    // User exited channel
 )
 
 type messageType int
 
+// ChatEvent represents a single message or channel membership event in a chat.
+// It includes the message text, author information, timestamp, and channel name.
 type ChatEvent struct {
 	ID   string `json:"id"`
 	Text string `json:"text"`
@@ -35,8 +38,10 @@ type ChatEvent struct {
 	Channel string
 }
 
-func (chat *Chat) OnChanneEvent(channel string, handle func(event *ChatEvent) error) (func(), error) {
-	return chat.Subscribe(compose.EventsIn(channel), func(eventType int, kwargs map[string]interface{}) error {
+// OnChannelEvent subscribes to messages in a channel. The handler is called for
+// each message or membership event. Returns an unsubscribe function.
+func (chat *Chat) OnChannelEvent(channel string, handle func(event *ChatEvent) error) (func(), error) {
+	return chat.Subscribe(compose.EventsIn(channel), func(eventType int, kwargs map[string]any) error {
 		log := chat.client.log.WithField("event_type", eventType)
 
 		if kwargs["message"] == nil {
@@ -52,6 +57,8 @@ func (chat *Chat) OnChanneEvent(channel string, handle func(event *ChatEvent) er
 	})
 }
 
+// ListMessages executes a chat RPC call and unmarshals the result as a list of messages
+// with pagination cursors (prev and next).
 func (chat *Chat) ListMessages(desc turnpike.Call) ([]*ChatEvent, int64, int64, error) {
 	output := new(struct {
 		Messages []*ChatEvent `json:"messages"`
@@ -63,6 +70,8 @@ func (chat *Chat) ListMessages(desc turnpike.Call) ([]*ChatEvent, int64, int64, 
 	return output.Messages, output.Prev, output.Next, err
 }
 
+// IterMessages returns a channel that yields messages from a channel in chronological order.
+// The iterator automatically fetches new pages as needed.
 func (chat *Chat) IterMessages(desc turnpike.Call) <-chan Result[*ChatEvent] {
 	data := make(chan Result[*ChatEvent])
 

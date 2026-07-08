@@ -5,6 +5,9 @@ import (
 	"github.com/open-ifunny/ifunny-go/compose"
 )
 
+// User represents an iFunny user account. It includes profile information (nick, about, email),
+// verification and status flags (verified, banned, etc.), and engagement statistics
+// (subscribers, subscriptions, posts, etc.).
 type User struct {
 	Email            string `json:"email"`
 	SafeMode         bool   `json:"safe_mode"`
@@ -36,6 +39,7 @@ type User struct {
 	} `json:"num"`
 }
 
+// GetUser fetches a single user given a composed request (e.g. compose.UserAccount() for the authenticated user).
 func (client *Client) GetUser(desc compose.Request) (*User, error) {
 	user := new(struct {
 		Data User `json:"data"`
@@ -45,10 +49,11 @@ func (client *Client) GetUser(desc compose.Request) (*User, error) {
 	return &user.Data, err
 }
 
-// GetUsersPage fetches a page of any endpoint whose envelope is
-// data.users: content smiles, content republishers, user subscribers, and
-// user subscriptions. These endpoints return a reduced projection of User
-// (no email/privacy fields); absent fields are simply zero-valued.
+// GetUsersPage fetches a page of users from endpoints whose envelope is data.users
+// (e.g., content smiles, content republishers, user subscribers, subscriptions).
+// It is used internally by user iteration methods and exported for advanced use cases.
+// These endpoints return a reduced projection of User (no email/privacy fields);
+// absent fields are simply zero-valued.
 func (client *Client) GetUsersPage(request compose.Request) (*Page[User], error) {
 	users := new(struct {
 		Data struct {
@@ -60,18 +65,23 @@ func (client *Client) GetUsersPage(request compose.Request) (*Page[User], error)
 	return &users.Data.Users, err
 }
 
+// IterSubscribers returns a channel that yields users who follow the user (identified by ID).
+// The iterator automatically fetches new pages as needed.
 func (client *Client) IterSubscribers(id string) <-chan Result[*User] {
 	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request {
 		return compose.Subscribers(id, limit, page)
 	}, client.GetUsersPage)
 }
 
+// IterSubscriptions returns a channel that yields users followed by the user (identified by ID).
+// The iterator automatically fetches new pages as needed.
 func (client *Client) IterSubscriptions(id string) <-chan Result[*User] {
 	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request {
 		return compose.Subscriptions(id, limit, page)
 	}, client.GetUsersPage)
 }
 
+// GetUsers executes a chat RPC call and unmarshals the result as a list of users.
 func (chat *Chat) GetUsers(desc turnpike.Call) ([]*User, error) {
 	output := new(struct {
 		Users []*User `json:"users"`

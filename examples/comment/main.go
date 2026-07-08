@@ -17,7 +17,7 @@ func printComment(c *ifunny.Comment) {
 }
 
 func main() {
-	client, _ := ifunny.MakeClient(bearer, userAgent)
+	client, _ := ifunny.MakeClient(bearer, ifunny.RawUserAgent(userAgent))
 	comments, err := client.GetCommentPage(compose.Comments("r4mB8i4NA", 30, compose.NoPage[string]()))
 	if err != nil {
 		panic(err)

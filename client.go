@@ -34,12 +34,12 @@ func WithHTTPClient(h *http.Client) Option {
 	}
 }
 
-func newClient(authorization, userAgent string, opts ...Option) *Client {
+func newClient(authorization string, ua UserAgent, opts ...Option) *Client {
 	log := logrus.New()
 	log.SetFormatter(&logrus.JSONFormatter{})
 	log.SetLevel(LogLevel)
 	c := &Client{
-		userAgent:     userAgent,
+		userAgent:     ua.String(),
 		authorization: authorization,
 		http:          http.DefaultClient,
 		log:           log,
@@ -50,8 +50,11 @@ func newClient(authorization, userAgent string, opts ...Option) *Client {
 	return c
 }
 
-func MakeClient(bearer, userAgent string, opts ...Option) (*Client, error) {
-	client := newClient("bearer "+bearer, userAgent, opts...)
+// MakeClient constructs an authenticated client using a bearer token. It fetches
+// the authenticated user's account data and stores it in the returned client's
+// Self field. Returns an error if authentication fails or the account fetch fails.
+func MakeClient(bearer string, ua UserAgent, opts ...Option) (*Client, error) {
+	client := newClient("bearer "+bearer, ua, opts...)
 	client.bearer = bearer
 
 	self, err := client.GetUser(compose.UserAccount())
@@ -68,12 +71,15 @@ func MakeClient(bearer, userAgent string, opts ...Option) (*Client, error) {
 // (a basic token can't), so Self is nil. Chat requires a bearer and does not
 // work on a basic client. Call (*Client).PrimeBasic once on a freshly generated
 // token before making other requests.
-func MakeClientBasic(basic, userAgent string, opts ...Option) (*Client, error) {
-	return newClient("Basic "+basic, userAgent, opts...), nil
+func MakeClientBasic(basic string, ua UserAgent, opts ...Option) (*Client, error) {
+	return newClient("Basic "+basic, ua, opts...), nil
 }
 
-func MakeClientLog(bearer, userAgent string, log *logrus.Logger, opts ...Option) (*Client, error) {
-	client, err := MakeClient(bearer, userAgent, opts...)
+// MakeClientLog is like MakeClient but allows the caller to provide a custom
+// logrus.Logger instance for logging. The logger is applied after MakeClient
+// completes, so the initial /account fetch still uses the default logger.
+func MakeClientLog(bearer string, ua UserAgent, log *logrus.Logger, opts ...Option) (*Client, error) {
+	client, err := MakeClient(bearer, ua, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +88,9 @@ func MakeClientLog(bearer, userAgent string, log *logrus.Logger, opts ...Option)
 	return client, nil
 }
 
+// Client is an authenticated iFunny API client. It holds authentication state
+// (bearer token or basic auth), user-agent information, and the authenticated user's
+// account data (Self). Use MakeClient, MakeClientBasic, or MakeClientLog to construct.
 type Client struct {
 	bearer, userAgent string
 	authorization     string
@@ -91,12 +100,15 @@ type Client struct {
 	Self *User
 }
 
+// APIError represents an HTTP error returned by the iFunny API. It is returned
+// wrapped in an error by request methods; use AsAPIError to unwrap it.
 type APIError struct {
 	Kind        string `json:"error"`
 	Description string `json:"error_description"`
 	Status      int    `json:"status"`
 }
 
+// Error returns a human-readable error message for the API error.
 func (e APIError) Error() string {
 	return fmt.Sprintf("HTTP %d: %s: %s", e.Status, e.Kind, e.Description)
 }
@@ -156,7 +168,10 @@ func (client *Client) header() http.Header {
 	}
 }
 
-func (client *Client) RequestJSON(desc compose.Request, output interface{}) error {
+// RequestJSON executes a composed API request and unmarshals the response body
+// into output as JSON. Returns errors from the network request or JSON decoding.
+// API errors (HTTP >= 400) are returned as *APIError wrapped in error.
+func (client *Client) RequestJSON(desc compose.Request, output any) error {
 	traceID := uuid.New().String()
 	log := client.log.WithFields(logrus.Fields{
 		"trace_id": traceID,
