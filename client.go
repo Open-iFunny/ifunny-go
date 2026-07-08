@@ -25,12 +25,19 @@ const (
 type Option func(*Client)
 
 // WithHTTPClient sets the underlying *http.Client used for all iFunny API
-// requests. A nil client is ignored, leaving the default in place.
+// requests. When passed multiple times the last call wins.
 func WithHTTPClient(h *http.Client) Option {
 	return func(c *Client) {
-		if h != nil {
-			c.http = h
-		}
+		c.http = h
+	}
+}
+
+// WithLogger sets the logrus.Logger used by the client. When not supplied
+// the client uses a logrus.New() logger configured with a JSON formatter at
+// LogLevel. When passed multiple times the last call wins.
+func WithLogger(log *logrus.Logger) Option {
+	return func(c *Client) {
+		c.log = log
 	}
 }
 
@@ -75,22 +82,10 @@ func MakeClientBasic(basic string, ua UserAgent, opts ...Option) (*Client, error
 	return newClient("Basic "+basic, ua, opts...), nil
 }
 
-// MakeClientLog is like MakeClient but allows the caller to provide a custom
-// logrus.Logger instance for logging. The logger is applied after MakeClient
-// completes, so the initial /account fetch still uses the default logger.
-func MakeClientLog(bearer string, ua UserAgent, log *logrus.Logger, opts ...Option) (*Client, error) {
-	client, err := MakeClient(bearer, ua, opts...)
-	if err != nil {
-		return nil, err
-	}
-
-	client.log = log
-	return client, nil
-}
-
 // Client is an authenticated iFunny API client. It holds authentication state
 // (bearer token or basic auth), user-agent information, and the authenticated user's
-// account data (Self). Use MakeClient, MakeClientBasic, or MakeClientLog to construct.
+// account data (Self). Use MakeClient or MakeClientBasic to construct; pass
+// WithLogger or WithHTTPClient to override defaults.
 type Client struct {
 	bearer, userAgent string
 	authorization     string

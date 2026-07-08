@@ -26,7 +26,7 @@ func MakeBot(bearer string, ua ifunny.UserAgent) (*Bot, error) {
 	log := logrus.New()
 	log.SetFormatter(&logrus.JSONFormatter{})
 	log.SetLevel(ifunny.LogLevel)
-	client, err := ifunny.MakeClientLog(bearer, ua, log)
+	client, err := ifunny.MakeClient(bearer, ua, ifunny.WithLogger(log))
 	if err != nil {
 		return nil, err
 	}
