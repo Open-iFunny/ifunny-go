@@ -85,6 +85,23 @@ func (chat *Chat) OnChannelInvite(handle func(eventType int, channel *ChatChanne
 }
 
 // GetChannel executes a chat RPC call and unmarshals the result as a ChatChannel.
+//
+// The call argument is an opaque turnpike.Call — construct it with a builder
+// from the [compose] package that resolves to a single channel:
+//
+//   - [compose.GetChannel] — by channel name
+//   - [compose.GetDMChannel] — a DM channel (creates it if missing)
+//
+// Example (fetch a public channel by name):
+//
+//	channel, err := chat.GetChannel(compose.GetChannel("chat.gamers"))
+//	if err != nil {
+//		return err
+//	}
+//
+// Example (open a DM with another user):
+//
+//	channel, err := chat.GetChannel(compose.GetDMChannel(chat.client.Self.ID, "friend-id"))
 func (chat *Chat) GetChannel(call turnpike.Call) (*ChatChannel, error) {
 	output := new(struct {
 		Chat *ChatChannel `json:"chat"`

@@ -59,6 +59,24 @@ func (chat *Chat) OnChannelEvent(channel string, handle func(event *ChatEvent) e
 
 // ListMessages executes a chat RPC call and unmarshals the result as a list of messages
 // with pagination cursors (prev and next).
+//
+// The desc argument is an opaque turnpike.Call — construct it with the
+// [compose.ListMessages] builder. Prefer [Chat.IterMessages] if you want the
+// whole history; ListMessages returns a single page and its cursors so the
+// caller can drive pagination.
+//
+// Example (fetch the first page and one more):
+//
+//	msgs, _, next, err := chat.ListMessages(compose.ListMessages("chat.gamers", 30, compose.NoPage[int]()))
+//	if err != nil {
+//		return err
+//	}
+//	if next != 0 {
+//		more, _, _, err := chat.ListMessages(compose.ListMessages("chat.gamers", 30, compose.Next(next)))
+//		_ = more
+//		_ = err
+//	}
+//	_ = msgs
 func (chat *Chat) ListMessages(desc turnpike.Call) ([]*ChatEvent, int64, int64, error) {
 	output := new(struct {
 		Messages []*ChatEvent `json:"messages"`
@@ -72,6 +90,19 @@ func (chat *Chat) ListMessages(desc turnpike.Call) ([]*ChatEvent, int64, int64, 
 
 // IterMessages returns a channel that yields messages from a channel in chronological order.
 // The iterator automatically fetches new pages as needed.
+//
+// The desc argument is an opaque turnpike.Call — construct it with the
+// [compose.ListMessages] builder. The iterator itself carries pagination,
+// so start with [compose.NoPage] rather than a cursor.
+//
+// Example (drain the entire history of a channel):
+//
+//	for result := range chat.IterMessages(compose.ListMessages("chat.gamers", 30, compose.NoPage[int]())) {
+//		if result.Err != nil {
+//			return result.Err
+//		}
+//		fmt.Printf("[%s] %s\n", result.V.User.Nick, result.V.Text)
+//	}
 func (chat *Chat) IterMessages(desc turnpike.Call) <-chan Result[*ChatEvent] {
 	data := make(chan Result[*ChatEvent])
 

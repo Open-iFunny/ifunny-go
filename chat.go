@@ -60,6 +60,27 @@ func JSONDecode(data, output any) error {
 
 // Call executes a remote procedure call (RPC) and unmarshals the result into output.
 // Returns an error if the call fails or unmarshaling fails.
+//
+// The desc argument is an opaque turnpike.Call — construct it with a builder
+// from the [compose] package. Any compose function returning turnpike.Call
+// works; the ones most useful with the generic Call entry point (i.e. that
+// don't already have a typed wrapper on Chat) include:
+//
+//   - [compose.JoinChannel], [compose.ExitChannel], [compose.HideChannel]
+//   - [compose.Invite], [compose.InviteResponse], [compose.Kick]
+//   - [compose.CreateChannel], [compose.NewChannel]
+//
+// Example (join a channel and discard the response):
+//
+//	var out struct{}
+//	if err := chat.Call(compose.JoinChannel("chat.gamers"), &out); err != nil {
+//		return err
+//	}
+//
+// Example (invite users to a channel):
+//
+//	var out struct{}
+//	err := chat.Call(compose.Invite("chat.gamers", []string{"12345", "67890"}), &out)
 func (chat *Chat) Call(desc turnpike.Call, output any) error {
 	log := chat.client.log.WithFields(logrus.Fields{
 		"trace_id": uuid.New().String(),
@@ -89,6 +110,16 @@ func (chat *Chat) Call(desc turnpike.Call, output any) error {
 }
 
 // Publish publishes a message to a topic. Returns an error if the publish fails.
+//
+// The desc argument is an opaque turnpike.Publish — construct it with a
+// builder from the [compose] package. The only current builder is
+// [compose.MessageTo].
+//
+// Example (send a text message to a channel):
+//
+//	if err := chat.Publish(compose.MessageTo("chat.gamers", "gg")); err != nil {
+//		return err
+//	}
 func (chat *Chat) Publish(desc turnpike.Publish) error {
 	log := chat.client.log.WithFields(logrus.Fields{
 		"trace_id": uuid.New().String(),
@@ -108,6 +139,28 @@ func (chat *Chat) Publish(desc turnpike.Publish) error {
 
 // Subscribe subscribes to a topic and calls handle for each event. Returns an
 // unsubscribe function and an error if subscription fails.
+//
+// The desc argument is an opaque turnpike.Subscribe — construct it with a
+// builder from the [compose] package:
+//
+//   - [compose.EventsIn] — messages and membership events in a channel
+//   - [compose.JoinedChannels] — the authenticated user's channel join/exit events
+//   - [compose.ReceiveInvite] — channel invitations sent to the authenticated user
+//
+// For the common cases prefer the typed wrappers [Chat.OnChannelEvent],
+// [Chat.OnChannelUpdate], and [Chat.OnChannelInvite], which decode kwargs
+// into strongly-typed events before calling their handler.
+//
+// Example (raw subscription to a channel's events):
+//
+//	unsubscribe, err := chat.Subscribe(compose.EventsIn("chat.gamers"), func(eventType int, kwargs map[string]any) error {
+//		fmt.Printf("event %d: %+v\n", eventType, kwargs)
+//		return nil
+//	})
+//	if err != nil {
+//		return err
+//	}
+//	defer unsubscribe()
 func (chat *Chat) Subscribe(desc turnpike.Subscribe, handle EventHandler) (func(), error) {
 	log := chat.client.log.WithFields(logrus.Fields{
 		"trace_id": uuid.New().String(),

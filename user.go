@@ -82,6 +82,24 @@ func (client *Client) IterSubscriptions(id string) <-chan Result[*User] {
 }
 
 // GetUsers executes a chat RPC call and unmarshals the result as a list of users.
+//
+// The desc argument is an opaque turnpike.Call — construct it with a builder
+// from the [compose] package that resolves to a user list:
+//
+//   - [compose.Contacts] — the authenticated user's chat contacts
+//   - [compose.SearchContacts] — contacts filtered by a query string
+//   - [compose.Operators] — operators of a given channel
+//
+// Example (list your first 50 contacts):
+//
+//	users, err := chat.GetUsers(compose.Contacts(50))
+//	if err != nil {
+//		return err
+//	}
+//
+// Example (list the operators of a channel):
+//
+//	ops, err := chat.GetUsers(compose.Operators("chat.gamers"))
 func (chat *Chat) GetUsers(desc turnpike.Call) ([]*User, error) {
 	output := new(struct {
 		Users []*User `json:"users"`
