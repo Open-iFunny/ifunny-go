@@ -143,6 +143,27 @@ func (client *Client) IterChannelsQuery(query string) <-chan Result[*ChatChannel
 	}, client.GetChannelsPage)
 }
 
+// IterChannelsTrending returns a channel that yields the current trending chat
+// channels. The trending endpoint is a single non-paged fetch, so this is a
+// one-shot iterator: it delivers every trending channel and then closes. A
+// fetch error is delivered as a final Result with Err set before the channel
+// closes, matching the Result/close conventions of the paginated iterators.
+func (client *Client) IterChannelsTrending() <-chan Result[*ChatChannel] {
+	data := make(chan Result[*ChatChannel])
+	go func() {
+		defer close(data)
+		channels, err := client.GetChannels(compose.ChatsTrending)
+		if err != nil {
+			data <- Result[*ChatChannel]{Err: err}
+			return
+		}
+		for _, channel := range channels {
+			data <- Result[*ChatChannel]{V: channel}
+		}
+	}()
+	return data
+}
+
 // DMChannelName constructs a direct message channel name from the authenticated user's ID
 // and one or more recipient user IDs.
 func (client *Client) DMChannelName(them ...string) string {
