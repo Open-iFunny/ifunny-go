@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/open-ifunny/ifunny-go/compose"
@@ -13,7 +14,10 @@ import (
 )
 
 const (
-	apiRoot   = "https://api.ifunny.mobi/v4"
+	// DefaultAPIRoot is the production iFunny API base URL used by clients
+	// constructed without WithAPIRoot.
+	DefaultAPIRoot = "https://api.ifunny.mobi/v4"
+
 	projectID = "iFunny"
 
 	LogLevel = logrus.InfoLevel
@@ -29,6 +33,16 @@ type Option func(*Client)
 func WithHTTPClient(h *http.Client) Option {
 	return func(c *Client) {
 		c.http = h
+	}
+}
+
+// WithAPIRoot overrides the base URL used for iFunny API requests. Useful for
+// pointing a client at an httptest.NewServer in unit tests, or at a staging
+// environment. Any trailing slash is trimmed so callers may pass either form.
+// When passed multiple times the last call wins; the default is DefaultAPIRoot.
+func WithAPIRoot(root string) Option {
+	return func(c *Client) {
+		c.apiRoot = strings.TrimRight(root, "/")
 	}
 }
 
@@ -49,6 +63,7 @@ func newClient(authorization string, ua UserAgent, opts ...Option) *Client {
 		userAgent:     ua.String(),
 		authorization: authorization,
 		http:          http.DefaultClient,
+		apiRoot:       DefaultAPIRoot,
 		log:           log,
 	}
 	for _, opt := range opts {
@@ -90,6 +105,7 @@ type Client struct {
 	bearer, userAgent string
 	authorization     string
 	http              *http.Client
+	apiRoot           string
 	log               *logrus.Logger
 
 	Self *User
@@ -118,7 +134,7 @@ func AsAPIError(err error) (*APIError, bool) {
 	return nil, false
 }
 
-func request(desc compose.Request, header http.Header, client *http.Client) (*http.Response, error) {
+func request(apiRoot string, desc compose.Request, header http.Header, client *http.Client) (*http.Response, error) {
 	request, err := http.NewRequest(desc.Method, apiRoot+desc.Path, desc.Body)
 	if err != nil {
 		return nil, err
@@ -177,7 +193,7 @@ func (client *Client) RequestJSON(desc compose.Request, output any) error {
 	)
 
 	log.Trace("make request")
-	response, err := request(desc, client.header(), client.http)
+	response, err := request(client.apiRoot, desc, client.header(), client.http)
 	if err != nil {
 		log.Error(err)
 		return err

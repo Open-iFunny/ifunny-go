@@ -127,7 +127,7 @@ func GenerateBasic() (string, error) {
 // generated token before making other requests. Uses the client's configured
 // *http.Client, so any custom transport/timeouts are honored.
 func (client *Client) PrimeBasic() error {
-	req, err := http.NewRequest("GET", apiRoot+"/counters", nil)
+	req, err := http.NewRequest("GET", client.apiRoot+"/counters", nil)
 	if err != nil {
 		return err
 	}
