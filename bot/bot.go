@@ -19,21 +19,19 @@ type Bot struct {
 	Chat   *ifunny.Chat
 	Log    *logrus.Logger
 
-	ctx          context.Context
 	recvEvents   chan Context
 	unsubEvents  map[string]func()
 	handleEvents map[string]filtHandler
 }
 
-// MakeBot constructs a bot and authenticates its client. The ctx governs the
-// initial /account fetch and is retained as the bot's base context for the
-// per-event API calls made by a Context (e.g. Caller's user lookup), so
-// cancelling it aborts in-flight lookups.
-func MakeBot(ctx context.Context, bearer string, ua ifunny.UserAgent) (*Bot, error) {
+// MakeBot constructs a bot and authenticates its client. The bot's internal
+// API calls use context.Background(); it does not currently support
+// cancellation of its construction-time or per-event lookups.
+func MakeBot(bearer string, ua ifunny.UserAgent) (*Bot, error) {
 	log := logrus.New()
 	log.SetFormatter(&logrus.JSONFormatter{})
 	log.SetLevel(ifunny.LogLevel)
-	client, err := ifunny.MakeClient(ctx, bearer, ua, ifunny.WithLogger(log))
+	client, err := ifunny.MakeClient(context.Background(), bearer, ua, ifunny.WithLogger(log))
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +45,6 @@ func MakeBot(ctx context.Context, bearer string, ua ifunny.UserAgent) (*Bot, err
 		Client:       client,
 		Chat:         chat,
 		Log:          log,
-		ctx:          ctx,
 		recvEvents:   make(chan Context),
 		unsubEvents:  make(map[string]func()),
 		handleEvents: make(map[string]filtHandler, 0),

@@ -1,6 +1,8 @@
 package bot
 
 import (
+	"context"
+
 	"github.com/open-ifunny/ifunny-go"
 	"github.com/open-ifunny/ifunny-go/compose"
 )
@@ -38,9 +40,9 @@ func (ctx *eventContext) Caller() (*ifunny.User, error) {
 	var user *ifunny.User
 	var err error
 	if ctx.event.User.ID != "" {
-		user, err = ctx.robot.Client.GetUser(ctx.robot.ctx, compose.UserByID(ctx.event.User.ID))
+		user, err = ctx.robot.Client.GetUser(context.Background(), compose.UserByID(ctx.event.User.ID))
 	} else {
-		user, err = ctx.robot.Client.GetUser(ctx.robot.ctx, compose.UserByNick(ctx.event.User.Nick))
+		user, err = ctx.robot.Client.GetUser(context.Background(), compose.UserByNick(ctx.event.User.Nick))
 	}
 
 	if err == nil {
