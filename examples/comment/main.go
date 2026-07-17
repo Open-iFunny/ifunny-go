@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -17,8 +18,9 @@ func printComment(c *ifunny.Comment) {
 }
 
 func main() {
-	client, _ := ifunny.MakeClient(bearer, ifunny.RawUserAgent(userAgent))
-	comments, err := client.GetCommentPage(compose.Comments("r4mB8i4NA", 30, compose.NoPage[string]()))
+	ctx := context.Background()
+	client, _ := ifunny.MakeClient(ctx, bearer, ifunny.RawUserAgent(userAgent))
+	comments, err := client.GetCommentPage(ctx, compose.Comments("r4mB8i4NA", 30, compose.NoPage[string]()))
 	if err != nil {
 		panic(err)
 	}
@@ -27,12 +29,12 @@ func main() {
 		printComment(&c)
 	}
 
-	featured, err := client.GetFeedPage(compose.Feed("featured", 1, compose.NoPage[string]()))
+	featured, err := client.GetFeedPage(ctx, compose.Feed("featured", 1, compose.NoPage[string]()))
 	if err != nil {
 		panic(err)
 	}
 
-	data := client.IterComments(featured.Items[0].ID)
+	data := client.IterComments(ctx, featured.Items[0].ID)
 	for i := 0; i < 60; i++ {
 		r := <-data
 		if r.Err != nil {

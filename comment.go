@@ -1,6 +1,8 @@
 package ifunny
 
 import (
+	"context"
+
 	"github.com/open-ifunny/ifunny-go/compose"
 )
 
@@ -54,40 +56,40 @@ type Comment struct {
 
 // GetCommentPage fetches a single page of comments given a composed request.
 // It is used internally by comment iteration methods and exported for advanced use cases.
-func (client *Client) GetCommentPage(request compose.Request) (*Page[Comment], error) {
+func (client *Client) GetCommentPage(ctx context.Context, request compose.Request) (*Page[Comment], error) {
 	content := new(struct {
 		Data struct {
 			Comments Page[Comment] `json:"comments"`
 		}
 	})
 
-	err := client.RequestJSON(request, content)
+	err := client.RequestJSON(ctx, request, content)
 	return &content.Data.Comments, err
 }
 
 // IterComments returns a channel that yields top-level comments on content (identified by ID).
 // The iterator automatically fetches new pages as needed.
-func (client *Client) IterComments(id string) <-chan Result[*Comment] {
-	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request { return compose.Comments(id, limit, page) }, client.GetCommentPage)
+func (client *Client) IterComments(ctx context.Context, id string) <-chan Result[*Comment] {
+	return iterFrom(ctx, client, func(limit int, page compose.Page[string]) compose.Request { return compose.Comments(id, limit, page) }, client.GetCommentPage)
 }
 
 // GetRepliesPage fetches a single page of replies to a comment given a composed request.
 // It is used internally by reply iteration methods and exported for advanced use cases.
-func (client *Client) GetRepliesPage(request compose.Request) (*Page[Comment], error) {
+func (client *Client) GetRepliesPage(ctx context.Context, request compose.Request) (*Page[Comment], error) {
 	content := new(struct {
 		Data struct {
 			Replies Page[Comment] `json:"replies"`
 		} `json:"data"`
 	})
 
-	err := client.RequestJSON(request, content)
+	err := client.RequestJSON(ctx, request, content)
 	return &content.Data.Replies, err
 }
 
 // IterReplies returns a channel that yields replies to a specific comment (identified by cid on content id).
 // The iterator automatically fetches new pages as needed.
-func (client *Client) IterReplies(cid, id string) <-chan Result[*Comment] {
-	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request {
+func (client *Client) IterReplies(ctx context.Context, cid, id string) <-chan Result[*Comment] {
+	return iterFrom(ctx, client, func(limit int, page compose.Page[string]) compose.Request {
 		return compose.Replies(cid, id, limit, page)
 	}, client.GetRepliesPage)
 }

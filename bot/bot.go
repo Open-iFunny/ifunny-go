@@ -1,6 +1,8 @@
 package bot
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/open-ifunny/ifunny-go"
 	"github.com/open-ifunny/ifunny-go/compose"
@@ -17,16 +19,21 @@ type Bot struct {
 	Chat   *ifunny.Chat
 	Log    *logrus.Logger
 
+	ctx          context.Context
 	recvEvents   chan Context
 	unsubEvents  map[string]func()
 	handleEvents map[string]filtHandler
 }
 
-func MakeBot(bearer string, ua ifunny.UserAgent) (*Bot, error) {
+// MakeBot constructs a bot and authenticates its client. The ctx governs the
+// initial /account fetch and is retained as the bot's base context for the
+// per-event API calls made by a Context (e.g. Caller's user lookup), so
+// cancelling it aborts in-flight lookups.
+func MakeBot(ctx context.Context, bearer string, ua ifunny.UserAgent) (*Bot, error) {
 	log := logrus.New()
 	log.SetFormatter(&logrus.JSONFormatter{})
 	log.SetLevel(ifunny.LogLevel)
-	client, err := ifunny.MakeClient(bearer, ua, ifunny.WithLogger(log))
+	client, err := ifunny.MakeClient(ctx, bearer, ua, ifunny.WithLogger(log))
 	if err != nil {
 		return nil, err
 	}
@@ -40,6 +47,7 @@ func MakeBot(bearer string, ua ifunny.UserAgent) (*Bot, error) {
 		Client:       client,
 		Chat:         chat,
 		Log:          log,
+		ctx:          ctx,
 		recvEvents:   make(chan Context),
 		unsubEvents:  make(map[string]func()),
 		handleEvents: make(map[string]filtHandler, 0),

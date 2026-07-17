@@ -1,6 +1,7 @@
 package ifunny
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -31,7 +32,7 @@ func TestWithAPIRoot_RoutesRequestsToOverride(t *testing.T) {
 	// PrimeBasic hits /counters — we skip its 15s wait by not calling it here.
 	// Exercise RequestJSON directly against a composed request.
 	var out map[string]any
-	if err := client.RequestJSON(compose.UserAccount(), &out); err != nil {
+	if err := client.RequestJSON(context.Background(), compose.UserAccount(), &out); err != nil {
 		t.Fatalf("RequestJSON: %v", err)
 	}
 

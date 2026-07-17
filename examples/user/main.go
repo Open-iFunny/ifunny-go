@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -12,8 +13,9 @@ var bearer = os.Getenv("IFUNNY_BEARER")
 var userAgent = os.Getenv("IFUNNY_USER_AGENT")
 
 func main() {
-	client, _ := ifunny.MakeClient(bearer, ifunny.RawUserAgent(userAgent))
-	u, err := client.GetUser(compose.UserByNick("gastrodon"))
+	ctx := context.Background()
+	client, _ := ifunny.MakeClient(ctx, bearer, ifunny.RawUserAgent(userAgent))
+	u, err := client.GetUser(ctx, compose.UserByNick("gastrodon"))
 	if err != nil {
 		panic(err)
 	}

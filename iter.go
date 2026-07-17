@@ -1,6 +1,8 @@
 package ifunny
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/open-ifunny/ifunny-go/compose"
 	"github.com/sirupsen/logrus"
@@ -29,7 +31,7 @@ type Iterator[T any] struct {
 	Stop func()
 }
 
-func iterFrom[T Content | Comment | User | ChatChannel](client *Client, composer func(limit int, page compose.Page[string]) compose.Request, feeder func(compose.Request) (*Page[T], error)) <-chan Result[*T] {
+func iterFrom[T Content | Comment | User | ChatChannel](ctx context.Context, client *Client, composer func(limit int, page compose.Page[string]) compose.Request, feeder func(context.Context, compose.Request) (*Page[T], error)) <-chan Result[*T] {
 	page := compose.NoPage[string]()
 	data := make(chan Result[*T])
 
@@ -38,19 +40,33 @@ func iterFrom[T Content | Comment | User | ChatChannel](client *Client, composer
 		"trace_id": traceID,
 	})
 
+	// send delivers r on data, but bails out if ctx is cancelled so a
+	// downstream consumer that stops reading (or a cancelled request)
+	// never leaks this goroutine on a blocked send.
+	send := func(r Result[*T]) bool {
+		select {
+		case data <- r:
+			return true
+		case <-ctx.Done():
+			return false
+		}
+	}
+
 	go func() {
 		defer close(data)
 		for {
 			log.Trace("buffering a feed page")
-			items, err := feeder(composer(30, page))
+			items, err := feeder(ctx, composer(30, page))
 			if err != nil {
 				log.Trace("failed to get a feed page, exiting")
-				data <- Result[*T]{Err: err}
+				send(Result[*T]{Err: err})
 				return
 			}
 
 			for i := range items.Items {
-				data <- Result[*T]{V: &items.Items[i]}
+				if !send(Result[*T]{V: &items.Items[i]}) {
+					return
+				}
 			}
 
 			log.Tracef("next: %s, has next: %t",

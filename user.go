@@ -1,6 +1,8 @@
 package ifunny
 
 import (
+	"context"
+
 	"github.com/gastrodon/turnpike"
 	"github.com/open-ifunny/ifunny-go/compose"
 )
@@ -40,12 +42,12 @@ type User struct {
 }
 
 // GetUser fetches a single user given a composed request (e.g. compose.UserAccount() for the authenticated user).
-func (client *Client) GetUser(desc compose.Request) (*User, error) {
+func (client *Client) GetUser(ctx context.Context, desc compose.Request) (*User, error) {
 	user := new(struct {
 		Data User `json:"data"`
 	})
 
-	err := client.RequestJSON(desc, user)
+	err := client.RequestJSON(ctx, desc, user)
 	return &user.Data, err
 }
 
@@ -54,29 +56,29 @@ func (client *Client) GetUser(desc compose.Request) (*User, error) {
 // It is used internally by user iteration methods and exported for advanced use cases.
 // These endpoints return a reduced projection of User (no email/privacy fields);
 // absent fields are simply zero-valued.
-func (client *Client) GetUsersPage(request compose.Request) (*Page[User], error) {
+func (client *Client) GetUsersPage(ctx context.Context, request compose.Request) (*Page[User], error) {
 	users := new(struct {
 		Data struct {
 			Users Page[User] `json:"users"`
 		} `json:"data"`
 	})
 
-	err := client.RequestJSON(request, users)
+	err := client.RequestJSON(ctx, request, users)
 	return &users.Data.Users, err
 }
 
 // IterSubscribers returns a channel that yields users who follow the user (identified by ID).
 // The iterator automatically fetches new pages as needed.
-func (client *Client) IterSubscribers(id string) <-chan Result[*User] {
-	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request {
+func (client *Client) IterSubscribers(ctx context.Context, id string) <-chan Result[*User] {
+	return iterFrom(ctx, client, func(limit int, page compose.Page[string]) compose.Request {
 		return compose.Subscribers(id, limit, page)
 	}, client.GetUsersPage)
 }
 
 // IterSubscriptions returns a channel that yields users followed by the user (identified by ID).
 // The iterator automatically fetches new pages as needed.
-func (client *Client) IterSubscriptions(id string) <-chan Result[*User] {
-	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request {
+func (client *Client) IterSubscriptions(ctx context.Context, id string) <-chan Result[*User] {
+	return iterFrom(ctx, client, func(limit int, page compose.Page[string]) compose.Request {
 		return compose.Subscriptions(id, limit, page)
 	}, client.GetUsersPage)
 }

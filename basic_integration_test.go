@@ -3,6 +3,7 @@
 package ifunny
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -58,12 +59,13 @@ func TestBasicFlow(t *testing.T) {
 				t.Fatalf("MakeClientBasic: %v", err)
 			}
 
+			ctx := context.Background()
 			t.Log("priming (this takes ~15s)")
-			if err := client.PrimeBasic(); err != nil {
+			if err := client.PrimeBasic(ctx); err != nil {
 				t.Fatalf("PrimeBasic: %v", err)
 			}
 
-			user, err := client.GetUser(compose.UserByNick(nick))
+			user, err := client.GetUser(ctx, compose.UserByNick(nick))
 			if err != nil {
 				t.Fatalf("GetUser(by_nick %s): %v", nick, err)
 			}

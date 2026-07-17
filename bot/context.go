@@ -38,9 +38,9 @@ func (ctx *eventContext) Caller() (*ifunny.User, error) {
 	var user *ifunny.User
 	var err error
 	if ctx.event.User.ID != "" {
-		user, err = ctx.robot.Client.GetUser(compose.UserByID(ctx.event.User.ID))
+		user, err = ctx.robot.Client.GetUser(ctx.robot.ctx, compose.UserByID(ctx.event.User.ID))
 	} else {
-		user, err = ctx.robot.Client.GetUser(compose.UserByNick(ctx.event.User.Nick))
+		user, err = ctx.robot.Client.GetUser(ctx.robot.ctx, compose.UserByNick(ctx.event.User.Nick))
 	}
 
 	if err == nil {
