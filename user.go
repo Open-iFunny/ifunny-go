@@ -94,19 +94,19 @@ func (client *Client) IterSubscriptions(ctx context.Context, id string) <-chan R
 //
 // Example (list your first 50 contacts):
 //
-//	users, err := chat.GetUsers(compose.Contacts(50))
+//	users, err := chat.GetUsers(ctx, compose.Contacts(50))
 //	if err != nil {
 //		return err
 //	}
 //
 // Example (list the operators of a channel):
 //
-//	ops, err := chat.GetUsers(compose.Operators("chat.gamers"))
-func (chat *Chat) GetUsers(desc turnpike.Call) ([]*User, error) {
+//	ops, err := chat.GetUsers(ctx, compose.Operators("chat.gamers"))
+func (chat *Chat) GetUsers(ctx context.Context, desc turnpike.Call) ([]*User, error) {
 	output := new(struct {
 		Users []*User `json:"users"`
 	})
 
-	err := chat.Call(desc, output)
+	err := chat.Call(ctx, desc, output)
 	return output.Users, err
 }

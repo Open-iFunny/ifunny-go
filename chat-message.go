@@ -1,6 +1,8 @@
 package ifunny
 
 import (
+	"context"
+
 	"github.com/gastrodon/turnpike"
 	"github.com/google/uuid"
 	"github.com/open-ifunny/ifunny-go/compose"
@@ -40,8 +42,8 @@ type ChatEvent struct {
 
 // OnChannelEvent subscribes to messages in a channel. The handler is called for
 // each message or membership event. Returns an unsubscribe function.
-func (chat *Chat) OnChannelEvent(channel string, handle func(event *ChatEvent) error) (func(), error) {
-	return chat.Subscribe(compose.EventsIn(channel), func(eventType int, kwargs map[string]any) error {
+func (chat *Chat) OnChannelEvent(ctx context.Context, channel string, handle func(event *ChatEvent) error) (func(), error) {
+	return chat.Subscribe(ctx, compose.EventsIn(channel), func(eventType int, kwargs map[string]any) error {
 		log := chat.client.log.WithField("event_type", eventType)
 
 		if kwargs["message"] == nil {
@@ -67,24 +69,24 @@ func (chat *Chat) OnChannelEvent(channel string, handle func(event *ChatEvent) e
 //
 // Example (fetch the first page and one more):
 //
-//	msgs, _, next, err := chat.ListMessages(compose.ListMessages("chat.gamers", 30, compose.NoPage[int]()))
+//	msgs, _, next, err := chat.ListMessages(ctx, compose.ListMessages("chat.gamers", 30, compose.NoPage[int]()))
 //	if err != nil {
 //		return err
 //	}
 //	if next != 0 {
-//		more, _, _, err := chat.ListMessages(compose.ListMessages("chat.gamers", 30, compose.Next(next)))
+//		more, _, _, err := chat.ListMessages(ctx, compose.ListMessages("chat.gamers", 30, compose.Next(next)))
 //		_ = more
 //		_ = err
 //	}
 //	_ = msgs
-func (chat *Chat) ListMessages(desc turnpike.Call) ([]*ChatEvent, int64, int64, error) {
+func (chat *Chat) ListMessages(ctx context.Context, desc turnpike.Call) ([]*ChatEvent, int64, int64, error) {
 	output := new(struct {
 		Messages []*ChatEvent `json:"messages"`
 		Prev     int64        `json:"prev"`
 		Next     int64        `json:"next"`
 	})
 
-	err := chat.Call(desc, output)
+	err := chat.Call(ctx, desc, output)
 	return output.Messages, output.Prev, output.Next, err
 }
 
@@ -97,13 +99,13 @@ func (chat *Chat) ListMessages(desc turnpike.Call) ([]*ChatEvent, int64, int64, 
 //
 // Example (drain the entire history of a channel):
 //
-//	for result := range chat.IterMessages(compose.ListMessages("chat.gamers", 30, compose.NoPage[int]())) {
+//	for result := range chat.IterMessages(ctx, compose.ListMessages("chat.gamers", 30, compose.NoPage[int]())) {
 //		if result.Err != nil {
 //			return result.Err
 //		}
 //		fmt.Printf("[%s] %s\n", result.V.User.Nick, result.V.Text)
 //	}
-func (chat *Chat) IterMessages(desc turnpike.Call) <-chan Result[*ChatEvent] {
+func (chat *Chat) IterMessages(ctx context.Context, desc turnpike.Call) <-chan Result[*ChatEvent] {
 	data := make(chan Result[*ChatEvent])
 
 	traceID := uuid.New().String()
@@ -112,18 +114,34 @@ func (chat *Chat) IterMessages(desc turnpike.Call) <-chan Result[*ChatEvent] {
 		"channel":  desc.ArgumentsKw["chat_name"],
 	})
 
+	send := func(r Result[*ChatEvent]) bool {
+		select {
+		case data <- r:
+			return true
+		case <-ctx.Done():
+			// Best-effort delivery of the cancellation, matching iterFrom.
+			select {
+			case data <- Result[*ChatEvent]{Err: ctx.Err()}:
+			default:
+			}
+			return false
+		}
+	}
+
 	go func() {
 		defer close(data)
 		for {
-			buffer, _, next, err := chat.ListMessages(desc)
+			buffer, _, next, err := chat.ListMessages(ctx, desc)
 			if err != nil {
 				log.Trace("failed to get a message page, exiting")
-				data <- Result[*ChatEvent]{Err: err}
+				send(Result[*ChatEvent]{Err: err})
 				return
 			}
 
 			for _, event := range buffer {
-				data <- Result[*ChatEvent]{V: event}
+				if !send(Result[*ChatEvent]{V: event}) {
+					return
+				}
 			}
 
 			if next == 0 || len(buffer) == 0 {

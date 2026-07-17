@@ -1,8 +1,8 @@
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/gastrodon/turnpike v1.1.0 h1:BWKVeUFruClO7Oh4Un3bGk2O8RySgaXWWy4ZkB7CSrI=
-github.com/gastrodon/turnpike v1.1.0/go.mod h1:Awtmr4/Gy1p2P1PIVdO7cf3QiafNxVy5vpTAsqrkjKY=
+github.com/gastrodon/turnpike v1.1.1-0.20260717164209-4ba6aaf4e2c5 h1:gDF/DPQCpowLWcs5Y2x+utcYAFQHKjxrZKOxfe5vL2I=
+github.com/gastrodon/turnpike v1.1.1-0.20260717164209-4ba6aaf4e2c5/go.mod h1:fLN3ul3N22YFIS+3dHI5ndR+C85TPorqd1scza8NioQ=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/gopherjs/gopherjs v0.0.0-20161023184700-6f5a3c4a73ba h1:xryw1OKbAIiEjwQM4TUdIvOLolJK5/LjhEE9pFu4j70=

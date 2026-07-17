@@ -36,7 +36,7 @@ func MakeBot(bearer string, ua ifunny.UserAgent) (*Bot, error) {
 		return nil, err
 	}
 
-	chat, err := client.Chat()
+	chat, err := client.Chat(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (bot *Bot) Subscribe(channel string) {
 		unsub()
 	}
 
-	bot.Chat.Subscribe(compose.EventsIn(channel), func(eventType int, eventKW map[string]any) error {
+	bot.Chat.Subscribe(context.Background(), compose.EventsIn(channel), func(eventType int, eventKW map[string]any) error {
 		log = log.WithFields(logrus.Fields{"event_type": eventType, "channel": channel})
 		log.Trace("handle event")
 

@@ -1,6 +1,7 @@
 package ifunny
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/gastrodon/turnpike"
@@ -16,7 +17,7 @@ const (
 
 // Chat establishes a WebSocket connection to the iFunny chat API using the client's
 // bearer token. Returns an error if authentication or connection fails.
-func (client *Client) Chat() (*Chat, error) {
+func (client *Client) Chat(ctx context.Context) (*Chat, error) {
 	log := client.log.WithField("trace_id", uuid.New().String())
 
 	log.Trace("start connect chat")
@@ -28,7 +29,7 @@ func (client *Client) Chat() (*Chat, error) {
 
 	log.Trace("join realm ifunny")
 	ws.Auth = map[string]turnpike.AuthFunc{"ticket": turnpike.NewTicketAuthenticator(client.bearer)}
-	hello, err := ws.JoinRealm(string(compose.URI("ifunny")), nil)
+	hello, err := ws.JoinRealm(ctx, string(compose.URI("ifunny")), nil)
 	if err != nil {
 		log.Error(err)
 		return nil, err
@@ -73,15 +74,15 @@ func JSONDecode(data, output any) error {
 // Example (join a channel and discard the response):
 //
 //	var out struct{}
-//	if err := chat.Call(compose.JoinChannel("chat.gamers"), &out); err != nil {
+//	if err := chat.Call(ctx, compose.JoinChannel("chat.gamers"), &out); err != nil {
 //		return err
 //	}
 //
 // Example (invite users to a channel):
 //
 //	var out struct{}
-//	err := chat.Call(compose.Invite("chat.gamers", []string{"12345", "67890"}), &out)
-func (chat *Chat) Call(desc turnpike.Call, output any) error {
+//	err := chat.Call(ctx, compose.Invite("chat.gamers", []string{"12345", "67890"}), &out)
+func (chat *Chat) Call(ctx context.Context, desc turnpike.Call, output any) error {
 	log := chat.client.log.WithFields(logrus.Fields{
 		"trace_id": uuid.New().String(),
 		"type":     "CALL",
@@ -90,7 +91,7 @@ func (chat *Chat) Call(desc turnpike.Call, output any) error {
 	})
 
 	log.Trace("exec call")
-	result, err := chat.ws.Call(string(desc.Procedure), desc.Options, desc.Arguments, desc.ArgumentsKw)
+	result, err := chat.ws.Call(ctx, string(desc.Procedure), desc.Options, desc.Arguments, desc.ArgumentsKw)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -117,10 +118,10 @@ func (chat *Chat) Call(desc turnpike.Call, output any) error {
 //
 // Example (send a text message to a channel):
 //
-//	if err := chat.Publish(compose.MessageTo("chat.gamers", "gg")); err != nil {
+//	if err := chat.Publish(ctx, compose.MessageTo("chat.gamers", "gg")); err != nil {
 //		return err
 //	}
-func (chat *Chat) Publish(desc turnpike.Publish) error {
+func (chat *Chat) Publish(ctx context.Context, desc turnpike.Publish) error {
 	log := chat.client.log.WithFields(logrus.Fields{
 		"trace_id": uuid.New().String(),
 		"type":     "PUBLISH",
@@ -153,7 +154,7 @@ func (chat *Chat) Publish(desc turnpike.Publish) error {
 //
 // Example (raw subscription to a channel's events):
 //
-//	unsubscribe, err := chat.Subscribe(compose.EventsIn("chat.gamers"), func(eventType int, kwargs map[string]any) error {
+//	unsubscribe, err := chat.Subscribe(ctx, compose.EventsIn("chat.gamers"), func(eventType int, kwargs map[string]any) error {
 //		fmt.Printf("event %d: %+v\n", eventType, kwargs)
 //		return nil
 //	})
@@ -161,7 +162,7 @@ func (chat *Chat) Publish(desc turnpike.Publish) error {
 //		return err
 //	}
 //	defer unsubscribe()
-func (chat *Chat) Subscribe(desc turnpike.Subscribe, handle EventHandler) (func(), error) {
+func (chat *Chat) Subscribe(ctx context.Context, desc turnpike.Subscribe, handle EventHandler) (func(), error) {
 	log := chat.client.log.WithFields(logrus.Fields{
 		"trace_id": uuid.New().String(),
 		"type":     "SUBSCRIBE",
@@ -170,7 +171,7 @@ func (chat *Chat) Subscribe(desc turnpike.Subscribe, handle EventHandler) (func(
 	})
 
 	log.Trace("exec subscribe")
-	err := chat.ws.Subscribe(string(desc.Topic), desc.Options, func(args []any, kwargs map[string]any) {
+	err := chat.ws.Subscribe(ctx, string(desc.Topic), desc.Options, func(args []any, kwargs map[string]any) {
 		eType := 0
 		if err := JSONDecode(kwargs["type"], &eType); err != nil {
 			log.Error(err)
@@ -182,5 +183,5 @@ func (chat *Chat) Subscribe(desc turnpike.Subscribe, handle EventHandler) (func(
 		}
 	})
 
-	return func() { chat.ws.Unsubscribe(string(desc.Topic)) }, err
+	return func() { chat.ws.Unsubscribe(ctx, string(desc.Topic)) }, err
 }

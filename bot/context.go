@@ -57,7 +57,7 @@ func (ctx *eventContext) Channel() (*ifunny.ChatChannel, error) {
 		return ctx.channel, nil
 	}
 
-	channel, err := ctx.robot.Chat.GetChannel(compose.GetChannel(ctx.channelName))
+	channel, err := ctx.robot.Chat.GetChannel(context.Background(), compose.GetChannel(ctx.channelName))
 	if err == nil {
 		ctx.channel = channel
 	}
@@ -66,7 +66,7 @@ func (ctx *eventContext) Channel() (*ifunny.ChatChannel, error) {
 }
 
 func (ctx *eventContext) Send(message string) error {
-	return ctx.robot.Chat.Publish(compose.MessageTo(ctx.channelName, message))
+	return ctx.robot.Chat.Publish(context.Background(), compose.MessageTo(ctx.channelName, message))
 }
 
 func (bot *Bot) makeCtx(channel string, event *ifunny.ChatEvent) (Context, error) {

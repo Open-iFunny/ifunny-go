@@ -76,14 +76,14 @@ func (chat *Chat) handleChannelsRaw(handle func(eventType int, channel *ChatChan
 
 // OnChannelUpdate subscribes to channel join and invite events. The handler is called
 // with the event type and channel data. Returns an unsubscribe function.
-func (chat *Chat) OnChannelUpdate(handle func(eventType int, channel *ChatChannel) error) (func(), error) {
-	return chat.Subscribe(compose.JoinedChannels(chat.client.Self.ID), chat.handleChannelsRaw(handle))
+func (chat *Chat) OnChannelUpdate(ctx context.Context, handle func(eventType int, channel *ChatChannel) error) (func(), error) {
+	return chat.Subscribe(ctx, compose.JoinedChannels(chat.client.Self.ID), chat.handleChannelsRaw(handle))
 }
 
 // OnChannelInvite subscribes to channel invite events. The handler is called with the
 // event type and invited channel data. Returns an unsubscribe function.
-func (chat *Chat) OnChannelInvite(handle func(eventType int, channel *ChatChannel) error) (func(), error) {
-	return chat.Subscribe(compose.ReceiveInvite(chat.client.Self.ID), chat.handleChannelsRaw(handle))
+func (chat *Chat) OnChannelInvite(ctx context.Context, handle func(eventType int, channel *ChatChannel) error) (func(), error) {
+	return chat.Subscribe(ctx, compose.ReceiveInvite(chat.client.Self.ID), chat.handleChannelsRaw(handle))
 }
 
 // GetChannel executes a chat RPC call and unmarshals the result as a ChatChannel.
@@ -96,20 +96,20 @@ func (chat *Chat) OnChannelInvite(handle func(eventType int, channel *ChatChanne
 //
 // Example (fetch a public channel by name):
 //
-//	channel, err := chat.GetChannel(compose.GetChannel("chat.gamers"))
+//	channel, err := chat.GetChannel(ctx, compose.GetChannel("chat.gamers"))
 //	if err != nil {
 //		return err
 //	}
 //
 // Example (open a DM with another user):
 //
-//	channel, err := chat.GetChannel(compose.GetDMChannel(chat.client.Self.ID, "friend-id"))
-func (chat *Chat) GetChannel(call turnpike.Call) (*ChatChannel, error) {
+//	channel, err := chat.GetChannel(ctx, compose.GetDMChannel(chat.client.Self.ID, "friend-id"))
+func (chat *Chat) GetChannel(ctx context.Context, call turnpike.Call) (*ChatChannel, error) {
 	output := new(struct {
 		Chat *ChatChannel `json:"chat"`
 	})
 
-	err := chat.Call(call, output)
+	err := chat.Call(ctx, call, output)
 	return output.Chat, err
 }
 
