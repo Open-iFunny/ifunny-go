@@ -17,7 +17,10 @@ type Page[T Comment | Content | User | ChatChannel] struct {
 
 // Result carries one item from an iterator or an error. Iterators close their
 // channel when done; a mid-iteration failure is delivered as a final Result
-// with Err set (and V zero-valued) before the channel closes.
+// with Err set (and V zero-valued) before the channel closes. Cancelling the
+// iterator's ctx delivers a final Result with Err = ctx.Err() on a best-effort
+// basis: it is sent only if the consumer is still receiving, so a consumer
+// that cancels and walks away never blocks the pager goroutine.
 type Result[T any] struct {
 	V   T
 	Err error
@@ -42,12 +45,18 @@ func iterFrom[T Content | Comment | User | ChatChannel](ctx context.Context, cli
 
 	// send delivers r on data, but bails out if ctx is cancelled so a
 	// downstream consumer that stops reading (or a cancelled request)
-	// never leaks this goroutine on a blocked send.
+	// never leaks this goroutine on a blocked send. On cancellation it
+	// makes a best-effort (non-blocking) delivery of ctx.Err() so a
+	// still-listening consumer can tell cancellation from exhaustion.
 	send := func(r Result[*T]) bool {
 		select {
 		case data <- r:
 			return true
 		case <-ctx.Done():
+			select {
+			case data <- Result[*T]{Err: ctx.Err()}:
+			default:
+			}
 			return false
 		}
 	}
