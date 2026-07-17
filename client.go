@@ -201,6 +201,7 @@ func (client *Client) RequestJSON(ctx context.Context, desc compose.Request, out
 		log.Error(err)
 		return err
 	}
+	defer response.Body.Close()
 
 	log.Trace(fmt.Sprintf("got response %s", response.Status))
 	bodyBytes, err := io.ReadAll(response.Body)
