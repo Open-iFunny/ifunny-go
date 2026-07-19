@@ -24,7 +24,7 @@ func main() {
 
 	fmt.Printf("got %d trendy chat channels!\n", len(channels))
 
-	messages, _, _, err := chat.ListMessages(ctx, compose.ListMessages("apitools", 10, compose.NoPage[int]()))
+	messages, _, _, err := chat.ListMessages(ctx, compose.ListMessages("apitools", 10, compose.NoPage()))
 	if err != nil {
 		panic(err)
 	}
@@ -34,7 +34,7 @@ func main() {
 		fmt.Printf("[%.0f] %s: %s\n", m.PubAt, m.User.Nick, m.Text)
 	}
 
-	messages, _, _, err = chat.ListMessages(ctx, compose.ListMessages("apitools", 10, compose.Prev(0)))
+	messages, _, _, err = chat.ListMessages(ctx, compose.ListMessages("apitools", 10, compose.Prev(compose.Literal[int]{Wrapped: 0})))
 	if err != nil {
 		panic(err)
 	}

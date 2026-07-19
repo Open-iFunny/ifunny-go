@@ -27,7 +27,9 @@ func EventsIn(channel string) turnpike.Subscribe {
 }
 
 // ListMessages composes a call to list messages in a channel with pagination.
-func ListMessages(channel string, limit int, page Page[int]) turnpike.Call {
+// The WAMP wire wants a raw int cursor, so a Literal[int] page is unwrapped to
+// its int; any other Value falls back to its String form.
+func ListMessages(channel string, limit int, page Page) turnpike.Call {
 	call := turnpike.Call{
 		Procedure: URI("list_messages"),
 		ArgumentsKw: map[string]any{
@@ -37,7 +39,11 @@ func ListMessages(channel string, limit int, page Page[int]) turnpike.Call {
 	}
 
 	if page.Key != NONE {
-		call.ArgumentsKw[string(page.Key)] = page.Value
+		if lit, ok := page.Value.(Literal[int]); ok {
+			call.ArgumentsKw[string(page.Key)] = lit.Wrapped
+		} else {
+			call.ArgumentsKw[string(page.Key)] = page.Value.String()
+		}
 	}
 
 	return call

@@ -34,8 +34,8 @@ type Iterator[T any] struct {
 	Stop func()
 }
 
-func iterFrom[T Content | Comment | User | ChatChannel](ctx context.Context, client *Client, composer func(limit int, page compose.Page[string]) compose.Request, feeder func(context.Context, compose.Request) (*Page[T], error)) <-chan Result[*T] {
-	page := compose.NoPage[string]()
+func iterFrom[T Content | Comment | User | ChatChannel](ctx context.Context, client *Client, feed compose.Feed, feeder func(context.Context, compose.Request) (*Page[T], error)) <-chan Result[*T] {
+	page := compose.NoPage()
 	data := make(chan Result[*T])
 
 	traceID := uuid.New().String()
@@ -65,7 +65,7 @@ func iterFrom[T Content | Comment | User | ChatChannel](ctx context.Context, cli
 		defer close(data)
 		for {
 			log.Trace("buffering a feed page")
-			items, err := feeder(ctx, composer(30, page))
+			items, err := feeder(ctx, feed.Request(page))
 			if err != nil {
 				log.Trace("failed to get a feed page, exiting")
 				send(Result[*T]{Err: err})
@@ -86,7 +86,11 @@ func iterFrom[T Content | Comment | User | ChatChannel](ctx context.Context, cli
 				return
 			}
 
-			page = compose.Next(items.Paging.Cursors.Next)
+			next := items.Paging.Cursors.Next
+			if feed.Pager != nil {
+				next = feed.Pager(next)
+			}
+			page = compose.Next(compose.Literal[string]{Wrapped: next})
 		}
 	}()
 

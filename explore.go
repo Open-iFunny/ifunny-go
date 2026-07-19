@@ -41,9 +41,7 @@ func iterExplore[T Content | User | ChatChannel](ctx context.Context, client *Cl
 	return iterFrom(
 		ctx,
 		client,
-		func(limit int, page compose.Page[string]) compose.Request {
-			return compose.Explore(compilation, limit, page)
-		},
+		compose.Explore(compilation),
 		func(ctx context.Context, request compose.Request) (*Page[T], error) {
 			return explorePage[T](ctx, client, request)
 		},

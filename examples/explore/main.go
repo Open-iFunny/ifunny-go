@@ -25,7 +25,7 @@ func main() {
 	ctx := context.Background()
 	client, _ := ifunny.MakeClient(ctx, bearer, ifunny.RawUserAgent(userAgent))
 
-	page, err := client.ExploreContentPage(ctx, compose.Explore("content_shuffle", 30, compose.NoPage[string]()))
+	page, err := client.ExploreContentPage(ctx, compose.Explore("content_shuffle").Request(compose.NoPage()))
 	if err != nil {
 		panic(err)
 	}
