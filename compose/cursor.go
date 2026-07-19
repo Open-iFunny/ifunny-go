@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/zlib"
 	"encoding/base64"
+	"fmt"
 	"io"
 	"strings"
 )
@@ -58,22 +59,22 @@ func DecodeIDs(token string) (IDs, error) {
 // cursor, preserving order. This dodges the collective size cliff: the server
 // grows its exclusion set unbounded and 400s on its own oversized cursor, but a
 // short trailing window stays well under the limit while still excluding
-// recently-seen content. On a malformed token (or n <= 0) it returns the token
-// unchanged.
-func TailPager(n int) func(string) string {
+// recently-seen content. A malformed cursor is surfaced as an error rather than
+// silently forwarded. n <= 0 disables trimming and passes the token through.
+func TailPager(n int) func(string) (string, error) {
 	if n <= 0 {
-		return func(token string) string { return token }
+		return func(token string) (string, error) { return token, nil }
 	}
 
-	return func(token string) string {
+	return func(token string) (string, error) {
 		ids, err := DecodeIDs(token)
 		if err != nil {
-			return token
+			return "", fmt.Errorf("tail pager decoding cursor: %w", err)
 		}
 
 		if len(ids) > n {
 			ids = ids[len(ids)-n:]
 		}
-		return ids.String()
+		return ids.String(), nil
 	}
 }

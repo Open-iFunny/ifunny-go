@@ -88,7 +88,12 @@ func iterFrom[T Content | Comment | User | ChatChannel](ctx context.Context, cli
 
 			next := items.Paging.Cursors.Next
 			if feed.Pager != nil {
-				next = feed.Pager(next)
+				next, err = feed.Pager(next)
+				if err != nil {
+					log.Trace("pager failed to transform the cursor, exiting")
+					send(Result[*T]{Err: err})
+					return
+				}
 			}
 			page = compose.Next(compose.Literal{Wrapped: next})
 		}

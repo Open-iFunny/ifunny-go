@@ -66,7 +66,10 @@ func TestDecodeErrors(t *testing.T) {
 
 func TestTailPagerKeepsLastN(t *testing.T) {
 	full := IDs{"a", "b", "c", "d", "e"}
-	token := TailPager(2)(full.String())
+	token, err := TailPager(2)(full.String())
+	if err != nil {
+		t.Fatalf("TailPager: %v", err)
+	}
 
 	got, err := DecodeIDs(token)
 	if err != nil {
@@ -80,7 +83,10 @@ func TestTailPagerKeepsLastN(t *testing.T) {
 
 func TestTailPagerShorterThanN(t *testing.T) {
 	full := IDs{"a", "b"}
-	token := TailPager(10)(full.String())
+	token, err := TailPager(10)(full.String())
+	if err != nil {
+		t.Fatalf("TailPager: %v", err)
+	}
 
 	got, err := DecodeIDs(token)
 	if err != nil {
@@ -91,12 +97,22 @@ func TestTailPagerShorterThanN(t *testing.T) {
 	}
 }
 
-func TestTailPagerIdentity(t *testing.T) {
-	// n <= 0 and malformed input both pass the token through unchanged.
-	if got := TailPager(0)("anything"); got != "anything" {
+func TestTailPagerZeroIsIdentity(t *testing.T) {
+	// n <= 0 disables trimming and passes the token through without decoding,
+	// so it never errors even on an opaque value.
+	got, err := TailPager(0)("anything")
+	if err != nil {
+		t.Fatalf("n=0 should not error: %v", err)
+	}
+	if got != "anything" {
 		t.Fatalf("n=0 should be identity, got %q", got)
 	}
-	if got := TailPager(5)("not-a-cursor!!!"); got != "not-a-cursor!!!" {
-		t.Fatalf("garbage should pass through, got %q", got)
+}
+
+func TestTailPagerErrorsOnMalformed(t *testing.T) {
+	// A trimming pager cannot decode a malformed cursor, so it surfaces the
+	// error rather than forwarding a bad token.
+	if _, err := TailPager(5)("not-a-cursor!!!"); err == nil {
+		t.Fatal("expected an error on a malformed cursor")
 	}
 }

@@ -32,8 +32,9 @@ type Feed struct {
 
 	// Pager transforms the raw cursor the server returned into the token sent
 	// on the next request. nil means echo the server's cursor verbatim (the
-	// historical behavior). For collective this is a [TailPager].
-	Pager func(string) string
+	// historical behavior). For collective this is a [TailPager]. An error stops
+	// iteration — a malformed cursor is a real failure, not something to forward.
+	Pager func(string) (string, error)
 
 	// PagerIn selects query vs body placement of the page token. Body placement
 	// only takes effect on POST feeds; it is ignored (treated as InQuery) for GET.

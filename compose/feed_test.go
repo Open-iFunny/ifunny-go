@@ -87,7 +87,10 @@ func TestCollectiveTailPaging(t *testing.T) {
 		t.Fatal("Collective(2) should set a Pager")
 	}
 
-	trimmed := feed.Pager((IDs{"a", "b", "c", "d"}).String())
+	trimmed, err := feed.Pager((IDs{"a", "b", "c", "d"}).String())
+	if err != nil {
+		t.Fatalf("Pager: %v", err)
+	}
 	got, err := DecodeIDs(trimmed)
 	if err != nil {
 		t.Fatalf("DecodeIDs: %v", err)
