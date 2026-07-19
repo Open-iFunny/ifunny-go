@@ -90,7 +90,7 @@ func iterFrom[T Content | Comment | User | ChatChannel](ctx context.Context, cli
 			if feed.Pager != nil {
 				next = feed.Pager(next)
 			}
-			page = compose.Next(compose.Literal[string]{Wrapped: next})
+			page = compose.Next(compose.Literal{Wrapped: next})
 		}
 	}()
 

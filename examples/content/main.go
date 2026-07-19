@@ -43,7 +43,7 @@ func main() {
 		fmt.Println("that was the end of the feed")
 	}
 
-	page, err = client.GetFeedPage(ctx, feed.Request(compose.Next(compose.Literal[string]{Wrapped: page.Paging.Cursors.Next})))
+	page, err = client.GetFeedPage(ctx, feed.Request(compose.Next(compose.Literal{Wrapped: page.Paging.Cursors.Next})))
 	if err != nil {
 		panic(err)
 	}

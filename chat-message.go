@@ -69,12 +69,12 @@ func (chat *Chat) OnChannelEvent(ctx context.Context, channel string, handle fun
 //
 // Example (fetch the first page and one more):
 //
-//	msgs, _, next, err := chat.ListMessages(ctx, compose.ListMessages("chat.gamers", 30, compose.NoPage()))
+//	msgs, _, next, err := chat.ListMessages(ctx, compose.ListMessages("chat.gamers", 30, compose.NONE, 0))
 //	if err != nil {
 //		return err
 //	}
 //	if next != 0 {
-//		more, _, _, err := chat.ListMessages(ctx, compose.ListMessages("chat.gamers", 30, compose.Next(compose.Literal[int]{Wrapped: int(next)})))
+//		more, _, _, err := chat.ListMessages(ctx, compose.ListMessages("chat.gamers", 30, compose.NEXT, int(next)))
 //		_ = more
 //		_ = err
 //	}
@@ -99,7 +99,7 @@ func (chat *Chat) ListMessages(ctx context.Context, desc turnpike.Call) ([]*Chat
 //
 // Example (drain the entire history of a channel):
 //
-//	for result := range chat.IterMessages(ctx, compose.ListMessages("chat.gamers", 30, compose.NoPage())) {
+//	for result := range chat.IterMessages(ctx, compose.ListMessages("chat.gamers", 30, compose.NONE, 0)) {
 //		if result.Err != nil {
 //			return result.Err
 //		}

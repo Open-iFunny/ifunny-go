@@ -43,7 +43,7 @@ func TestCollectiveRequestBodyPlacement(t *testing.T) {
 }
 
 func TestNamedFeedRequestQueryPlacement(t *testing.T) {
-	req := NamedFeed("featured").Request(Next(Literal[string]{Wrapped: "cursor123"}))
+	req := NamedFeed("featured").Request(Next(Literal{Wrapped: "cursor123"}))
 
 	if req.Method != "GET" {
 		t.Fatalf("method: got %q, want GET", req.Method)
@@ -69,7 +69,7 @@ func TestNoPageOmitsToken(t *testing.T) {
 func TestInBodyIgnoredForGet(t *testing.T) {
 	// InBody only takes effect on POST; a GET normalizes to query placement.
 	feed := Feed{Path: "/feeds/x", PagerIn: InBody}
-	req := feed.Request(Next(Literal[string]{Wrapped: "tok"}))
+	req := feed.Request(Next(Literal{Wrapped: "tok"}))
 
 	if req.Body != nil {
 		t.Fatal("GET with InBody should not build a body")
