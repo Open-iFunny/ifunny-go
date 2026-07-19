@@ -68,3 +68,94 @@ func TestDefaultAPIRoot(t *testing.T) {
 		t.Errorf("default apiRoot = %q, want %q", c.apiRoot, DefaultAPIRoot)
 	}
 }
+
+// TestHTTPError_JSONBody confirms that structured JSON API errors are parsed
+// correctly, with Status filled from the HTTP code if not present in the JSON.
+func TestHTTPError_JSONBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"error":"invalid_request","error_description":"bad parameter"}`))
+	}))
+	defer srv.Close()
+
+	client, err := MakeClientBasic("dummy", Android{Version: "14"}.UserAgent(), WithAPIRoot(srv.URL))
+	if err != nil {
+		t.Fatalf("MakeClientBasic: %v", err)
+	}
+
+	var out map[string]any
+	err = client.RequestJSON(context.Background(), compose.UserAccount(), &out)
+	if err == nil {
+		t.Fatal("RequestJSON: expected error, got nil")
+	}
+
+	apiErr, ok := AsAPIError(err)
+	if !ok {
+		t.Fatalf("error is not *APIError: %T", err)
+	}
+
+	if apiErr.Status != http.StatusBadRequest {
+		t.Errorf("Status = %d, want %d", apiErr.Status, http.StatusBadRequest)
+	}
+	if apiErr.Kind != "invalid_request" {
+		t.Errorf("Kind = %q, want %q", apiErr.Kind, "invalid_request")
+	}
+	if apiErr.Description != "bad parameter" {
+		t.Errorf("Description = %q, want %q", apiErr.Description, "bad parameter")
+	}
+
+	// Confirm Error() produces a readable message.
+	errMsg := apiErr.Error()
+	if !strings.Contains(errMsg, "400") || !strings.Contains(errMsg, "invalid_request") {
+		t.Errorf("Error() = %q, want to contain '400' and 'invalid_request'", errMsg)
+	}
+}
+
+// TestHTTPError_PlainTextBody confirms that plain-text error bodies (e.g., CDN
+// responses like "Failure: 400 Bad Request") are handled gracefully and
+// returned as readable *APIError instead of JSON parse errors.
+func TestHTTPError_PlainTextBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte("Failure: 400 Bad Request"))
+	}))
+	defer srv.Close()
+
+	client, err := MakeClientBasic("dummy", Android{Version: "14"}.UserAgent(), WithAPIRoot(srv.URL))
+	if err != nil {
+		t.Fatalf("MakeClientBasic: %v", err)
+	}
+
+	var out map[string]any
+	err = client.RequestJSON(context.Background(), compose.UserAccount(), &out)
+	if err == nil {
+		t.Fatal("RequestJSON: expected error, got nil")
+	}
+
+	apiErr, ok := AsAPIError(err)
+	if !ok {
+		t.Fatalf("error is not *APIError: %T", err)
+	}
+
+	if apiErr.Status != http.StatusBadRequest {
+		t.Errorf("Status = %d, want %d", apiErr.Status, http.StatusBadRequest)
+	}
+	if apiErr.Kind != "Bad Request" {
+		t.Errorf("Kind = %q, want %q", apiErr.Kind, "Bad Request")
+	}
+	if apiErr.Description != "Failure: 400 Bad Request" {
+		t.Errorf("Description = %q, want %q", apiErr.Description, "Failure: 400 Bad Request")
+	}
+
+	// Confirm Error() produces a readable message (should NOT contain
+	// "failed to unwrap" or JSON parse errors).
+	errMsg := apiErr.Error()
+	if !strings.Contains(errMsg, "400") || !strings.Contains(errMsg, "Failure") {
+		t.Errorf("Error() = %q, want to contain '400' and 'Failure'", errMsg)
+	}
+	if strings.Contains(errMsg, "invalid character") || strings.Contains(errMsg, "failed to unwrap") {
+		t.Errorf("Error() = %q, should not contain parse errors", errMsg)
+	}
+}

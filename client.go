@@ -155,18 +155,26 @@ func request(ctx context.Context, apiRoot string, desc compose.Request, header h
 			return nil, fmt.Errorf("failed collecting HTTP error: %s", err)
 		}
 
-		unwrap := new(struct {
-			Msg []byte `json:"msg"`
-		})
-		if err := json.Unmarshal(b, unwrap); err != nil {
-			return nil, fmt.Errorf("failed to unwrap HTTP error: %s, body: %s", err, string(b))
-		}
-
 		apiErr := new(APIError)
-		if err := json.Unmarshal(b, apiErr); err != nil {
-			return nil, fmt.Errorf("failed to decode HTTP error: %s", err)
+		err = json.Unmarshal(b, apiErr)
+
+		// If JSON decode succeeded and we got at least a Kind or Description,
+		// treat it as a structured API error.
+		if err == nil && (apiErr.Kind != "" || apiErr.Description != "") {
+			// Fill in Status from the HTTP code if not present in the JSON.
+			if apiErr.Status == 0 {
+				apiErr.Status = r.StatusCode
+			}
+			return nil, apiErr
 		}
 
+		// JSON decode failed or the body is empty/zero. Fall back to a
+		// plain-text error using the HTTP status and the raw body.
+		apiErr = &APIError{
+			Status:      r.StatusCode,
+			Kind:        http.StatusText(r.StatusCode),
+			Description: strings.TrimSpace(string(b)),
+		}
 		return nil, apiErr
 	}
 
