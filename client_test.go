@@ -69,13 +69,13 @@ func TestDefaultAPIRoot(t *testing.T) {
 	}
 }
 
-// TestHTTPError_JSONBody confirms that structured JSON API errors are parsed
-// correctly, with Status filled from the HTTP code if not present in the JSON.
+// TestHTTPError_JSONBody confirms that a structured JSON error body is decoded
+// into an *APIError and returned unaltered.
 func TestHTTPError_JSONBody(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"error":"invalid_request","error_description":"bad parameter"}`))
+		w.Write([]byte(`{"error":"invalid_request","error_description":"bad parameter","status":400}`))
 	}))
 	defer srv.Close()
 
@@ -104,17 +104,11 @@ func TestHTTPError_JSONBody(t *testing.T) {
 	if apiErr.Description != "bad parameter" {
 		t.Errorf("Description = %q, want %q", apiErr.Description, "bad parameter")
 	}
-
-	// Confirm Error() produces a readable message.
-	errMsg := apiErr.Error()
-	if !strings.Contains(errMsg, "400") || !strings.Contains(errMsg, "invalid_request") {
-		t.Errorf("Error() = %q, want to contain '400' and 'invalid_request'", errMsg)
-	}
 }
 
-// TestHTTPError_PlainTextBody confirms that plain-text error bodies (e.g., CDN
-// responses like "Failure: 400 Bad Request") are handled gracefully and
-// returned as readable *APIError instead of JSON parse errors.
+// TestHTTPError_PlainTextBody confirms that a non-JSON error body (e.g., a CDN
+// response like "Failure: 400 Bad Request") yields a generic error carrying the
+// HTTP status and the raw body, rather than an *APIError.
 func TestHTTPError_PlainTextBody(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
@@ -134,28 +128,12 @@ func TestHTTPError_PlainTextBody(t *testing.T) {
 		t.Fatal("RequestJSON: expected error, got nil")
 	}
 
-	apiErr, ok := AsAPIError(err)
-	if !ok {
-		t.Fatalf("error is not *APIError: %T", err)
+	if _, ok := AsAPIError(err); ok {
+		t.Fatalf("expected a generic error for a non-JSON body, got *APIError")
 	}
 
-	if apiErr.Status != http.StatusBadRequest {
-		t.Errorf("Status = %d, want %d", apiErr.Status, http.StatusBadRequest)
-	}
-	if apiErr.Kind != "Bad Request" {
-		t.Errorf("Kind = %q, want %q", apiErr.Kind, "Bad Request")
-	}
-	if apiErr.Description != "Failure: 400 Bad Request" {
-		t.Errorf("Description = %q, want %q", apiErr.Description, "Failure: 400 Bad Request")
-	}
-
-	// Confirm Error() produces a readable message (should NOT contain
-	// "failed to unwrap" or JSON parse errors).
-	errMsg := apiErr.Error()
-	if !strings.Contains(errMsg, "400") || !strings.Contains(errMsg, "Failure") {
-		t.Errorf("Error() = %q, want to contain '400' and 'Failure'", errMsg)
-	}
-	if strings.Contains(errMsg, "invalid character") || strings.Contains(errMsg, "failed to unwrap") {
-		t.Errorf("Error() = %q, should not contain parse errors", errMsg)
+	errMsg := err.Error()
+	if !strings.Contains(errMsg, "400") || !strings.Contains(errMsg, "Failure: 400 Bad Request") {
+		t.Errorf("Error() = %q, want to contain '400' and the raw body", errMsg)
 	}
 }

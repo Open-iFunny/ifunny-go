@@ -157,25 +157,12 @@ func request(ctx context.Context, apiRoot string, desc compose.Request, header h
 		}
 
 		apiErr := new(APIError)
-		err = json.Unmarshal(b, apiErr)
-
-		// If JSON decode succeeded and we got at least a Kind or Description,
-		// treat it as a structured API error.
-		if err == nil && (apiErr.Kind != "" || apiErr.Description != "") {
-			// Fill in Status from the HTTP code if not present in the JSON.
-			if apiErr.Status == 0 {
-				apiErr.Status = r.StatusCode
-			}
-			return nil, apiErr
+		if err := json.Unmarshal(b, apiErr); err != nil {
+			// Body isn't a structured API error (empty, plain text, etc.);
+			// surface the status and raw body without parsing around it.
+			return nil, fmt.Errorf("HTTP %d: %s", r.StatusCode, strings.TrimSpace(string(b)))
 		}
 
-		// JSON decode failed or the body is empty/zero. Fall back to a
-		// plain-text error using the HTTP status and the raw body.
-		apiErr = &APIError{
-			Status:      r.StatusCode,
-			Kind:        http.StatusText(r.StatusCode),
-			Description: strings.TrimSpace(string(b)),
-		}
 		return nil, apiErr
 	}
 
@@ -201,7 +188,8 @@ func (client *Client) RequestJSON(ctx context.Context, desc compose.Request, out
 		"path":     desc.Path,
 		"method":   desc.Method,
 		"query":    desc.Query.Encode(),
-		"has_body": desc.Body != nil},
+		"has_body": desc.Body != nil,
+	},
 	)
 
 	log.Trace("make request")
