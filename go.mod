@@ -3,7 +3,7 @@ module github.com/open-ifunny/ifunny-go
 go 1.22.1
 
 require (
-	github.com/gastrodon/turnpike v1.1.1-0.20260717164209-4ba6aaf4e2c5
+	github.com/gastrodon/turnpike v1.2.0
 	github.com/google/uuid v1.6.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/sirupsen/logrus v1.9.3
