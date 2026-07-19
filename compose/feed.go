@@ -79,9 +79,16 @@ func (f Feed) Request(page Page) Request {
 }
 
 // NamedFeed describes a named content feed (e.g. "featured", "collective").
-// Use [Collective] for collective when you want body placement and tail-paging.
+// Collective is special-cased to POST — the method the API has always used for
+// it — with the cursor still on the query string, reproducing the historical
+// wire form exactly. Use [Collective] instead when you want body placement and
+// tail-paging.
 func NamedFeed(name string) Feed {
-	return Feed{Path: "/feeds/" + name}
+	feed := Feed{Path: "/feeds/" + name}
+	if name == "collective" {
+		feed.Method = "POST"
+	}
+	return feed
 }
 
 // Collective describes the collective feed with the mitigations proven to dodge

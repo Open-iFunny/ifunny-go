@@ -56,6 +56,30 @@ func TestNamedFeedRequestQueryPlacement(t *testing.T) {
 	}
 }
 
+func TestNamedFeedCollectiveIsPost(t *testing.T) {
+	// The API serves collective over POST; the old composer special-cased this.
+	// NamedFeed keeps the method while leaving the cursor on the query string,
+	// reproducing the historical wire form exactly — contrast [Collective],
+	// which moves the cursor into the body.
+	req := NamedFeed("collective").Request(Next(Literal{Wrapped: "cur"}))
+
+	if req.Method != "POST" {
+		t.Fatalf("method: got %q, want POST", req.Method)
+	}
+	if req.Path != "/feeds/collective" {
+		t.Fatalf("path: got %q", req.Path)
+	}
+	if req.Body != nil {
+		t.Fatal("NamedFeed collective should not build a body")
+	}
+	if got := req.Query.Get("next"); got != "cur" {
+		t.Fatalf("next should ride the query: got %q", got)
+	}
+	if req.Query.Get("limit") != "30" {
+		t.Fatalf("limit: got %q", req.Query.Get("limit"))
+	}
+}
+
 func TestNoPageOmitsToken(t *testing.T) {
 	req := NamedFeed("featured").Request(NoPage())
 	if req.Query.Get("next") != "" || req.Query.Get("prev") != "" {
