@@ -150,6 +150,7 @@ func request(ctx context.Context, apiRoot string, desc compose.Request, header h
 	}
 
 	if r.StatusCode >= 400 {
+		defer r.Body.Close()
 		b, err := io.ReadAll(r.Body)
 		if err != nil {
 			return nil, fmt.Errorf("failed collecting HTTP error: %s", err)
