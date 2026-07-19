@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -21,9 +22,10 @@ func printUser(u *ifunny.User) {
 }
 
 func main() {
-	client, _ := ifunny.MakeClient(bearer, ifunny.RawUserAgent(userAgent))
+	ctx := context.Background()
+	client, _ := ifunny.MakeClient(ctx, bearer, ifunny.RawUserAgent(userAgent))
 
-	page, err := client.ExploreContentPage(compose.Explore("content_shuffle", 30, compose.NoPage[string]()))
+	page, err := client.ExploreContentPage(ctx, compose.Explore("content_shuffle", 30, compose.NoPage[string]()))
 	if err != nil {
 		panic(err)
 	}
@@ -33,7 +35,7 @@ func main() {
 		printContent(&c)
 	}
 
-	contentIter := client.IterExploreContent("category-science-tech")
+	contentIter := client.IterExploreContent(ctx, "category-science-tech")
 	for i := 0; i < 120; i++ {
 		r := <-contentIter
 		if r.Err != nil {
@@ -48,7 +50,7 @@ func main() {
 		printContent(r.V)
 	}
 
-	userIter := client.IterExploreUser("users_top_by_subscribers")
+	userIter := client.IterExploreUser(ctx, "users_top_by_subscribers")
 	for i := 0; i < 60; i++ {
 		r := <-userIter
 		if r.Err != nil {

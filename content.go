@@ -1,6 +1,8 @@
 package ifunny
 
 import (
+	"context"
+
 	"github.com/open-ifunny/ifunny-go/compose"
 )
 
@@ -80,57 +82,57 @@ type Cursor struct {
 }
 
 // GetContent fetches a single piece of content by ID.
-func (client *Client) GetContent(id string) (*Content, error) {
+func (client *Client) GetContent(ctx context.Context, id string) (*Content, error) {
 	content := new(struct {
 		Data Content `json:"data"`
 	})
-	err := client.RequestJSON(compose.ContentByID(id), content)
+	err := client.RequestJSON(ctx, compose.ContentByID(id), content)
 	return &content.Data, err
 }
 
 // GetFeedPage fetches a single page of content given a composed request. It is used
 // internally by feed iteration methods and is exported for advanced use cases.
-func (client *Client) GetFeedPage(request compose.Request) (*Page[Content], error) {
+func (client *Client) GetFeedPage(ctx context.Context, request compose.Request) (*Page[Content], error) {
 	content := new(struct {
 		Data struct {
 			Content Page[Content] `json:"content"`
 		} `json:"data"`
 	})
 
-	err := client.RequestJSON(request, content)
+	err := client.RequestJSON(ctx, request, content)
 	return &content.Data.Content, err
 }
 
 // IterFeed returns a channel that yields content from a named feed (e.g. "hot", "trending").
-// The iterator automatically fetches new pages as needed. Close the channel to stop iteration.
-func (client *Client) IterFeed(feed string) <-chan Result[*Content] {
-	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request { return compose.Feed(feed, limit, page) }, client.GetFeedPage)
+// The iterator automatically fetches new pages as needed. Cancel ctx to stop iteration.
+func (client *Client) IterFeed(ctx context.Context, feed string) <-chan Result[*Content] {
+	return iterFrom(ctx, client, func(limit int, page compose.Page[string]) compose.Request { return compose.Feed(feed, limit, page) }, client.GetFeedPage)
 }
 
 // IterTimeline returns a channel that yields content posted by a user (identified by ID).
 // The iterator automatically fetches new pages as needed.
-func (client *Client) IterTimeline(id string) <-chan Result[*Content] {
-	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request { return compose.Timeline(id, limit, page) }, client.GetFeedPage)
+func (client *Client) IterTimeline(ctx context.Context, id string) <-chan Result[*Content] {
+	return iterFrom(ctx, client, func(limit int, page compose.Page[string]) compose.Request { return compose.Timeline(id, limit, page) }, client.GetFeedPage)
 }
 
 // IterTimelineByNick returns a channel that yields content posted by a user (identified by nick/username).
 // The iterator automatically fetches new pages as needed.
-func (client *Client) IterTimelineByNick(nick string) <-chan Result[*Content] {
-	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request {
+func (client *Client) IterTimelineByNick(ctx context.Context, nick string) <-chan Result[*Content] {
+	return iterFrom(ctx, client, func(limit int, page compose.Page[string]) compose.Request {
 		return compose.TimelineByNick(nick, limit, page)
 	}, client.GetFeedPage)
 }
 
 // IterSmiles returns a channel that yields users who smiled at the content (identified by ID).
 // The iterator automatically fetches new pages as needed.
-func (client *Client) IterSmiles(id string) <-chan Result[*User] {
-	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request { return compose.Smiles(id, limit, page) }, client.GetUsersPage)
+func (client *Client) IterSmiles(ctx context.Context, id string) <-chan Result[*User] {
+	return iterFrom(ctx, client, func(limit int, page compose.Page[string]) compose.Request { return compose.Smiles(id, limit, page) }, client.GetUsersPage)
 }
 
 // IterRepublishers returns a channel that yields users who republished the content (identified by ID).
 // The iterator automatically fetches new pages as needed.
-func (client *Client) IterRepublishers(id string) <-chan Result[*User] {
-	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request {
+func (client *Client) IterRepublishers(ctx context.Context, id string) <-chan Result[*User] {
+	return iterFrom(ctx, client, func(limit int, page compose.Page[string]) compose.Request {
 		return compose.Republished(id, limit, page)
 	}, client.GetUsersPage)
 }

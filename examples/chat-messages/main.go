@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -12,17 +13,18 @@ var bearer = os.Getenv("IFUNNY_BEARER")
 var userAgent = os.Getenv("IFUNNY_USER_AGENT")
 
 func main() {
-	client, _ := ifunny.MakeClient(bearer, ifunny.RawUserAgent(userAgent))
-	chat, _ := client.Chat()
+	ctx := context.Background()
+	client, _ := ifunny.MakeClient(ctx, bearer, ifunny.RawUserAgent(userAgent))
+	chat, _ := client.Chat(ctx)
 
-	channels, err := client.GetChannels(compose.ChatsTrending)
+	channels, err := client.GetChannels(ctx, compose.ChatsTrending)
 	if err != nil {
 		panic(err)
 	}
 
 	fmt.Printf("got %d trendy chat channels!\n", len(channels))
 
-	messages, _, _, err := chat.ListMessages(compose.ListMessages("apitools", 10, compose.NoPage[int]()))
+	messages, _, _, err := chat.ListMessages(ctx, compose.ListMessages("apitools", 10, compose.NoPage[int]()))
 	if err != nil {
 		panic(err)
 	}
@@ -32,7 +34,7 @@ func main() {
 		fmt.Printf("[%.0f] %s: %s\n", m.PubAt, m.User.Nick, m.Text)
 	}
 
-	messages, _, _, err = chat.ListMessages(compose.ListMessages("apitools", 10, compose.Prev(0)))
+	messages, _, _, err = chat.ListMessages(ctx, compose.ListMessages("apitools", 10, compose.Prev(0)))
 	if err != nil {
 		panic(err)
 	}

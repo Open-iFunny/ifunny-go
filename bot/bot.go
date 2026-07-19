@@ -1,6 +1,8 @@
 package bot
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/open-ifunny/ifunny-go"
 	"github.com/open-ifunny/ifunny-go/compose"
@@ -22,16 +24,19 @@ type Bot struct {
 	handleEvents map[string]filtHandler
 }
 
+// MakeBot constructs a bot and authenticates its client. The bot's internal
+// API calls use context.Background(); it does not currently support
+// cancellation of its construction-time or per-event lookups.
 func MakeBot(bearer string, ua ifunny.UserAgent) (*Bot, error) {
 	log := logrus.New()
 	log.SetFormatter(&logrus.JSONFormatter{})
 	log.SetLevel(ifunny.LogLevel)
-	client, err := ifunny.MakeClient(bearer, ua, ifunny.WithLogger(log))
+	client, err := ifunny.MakeClient(context.Background(), bearer, ua, ifunny.WithLogger(log))
 	if err != nil {
 		return nil, err
 	}
 
-	chat, err := client.Chat()
+	chat, err := client.Chat(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +58,7 @@ func (bot *Bot) Subscribe(channel string) {
 		unsub()
 	}
 
-	bot.Chat.Subscribe(compose.EventsIn(channel), func(eventType int, eventKW map[string]any) error {
+	bot.Chat.Subscribe(context.Background(), compose.EventsIn(channel), func(eventType int, eventKW map[string]any) error {
 		log = log.WithFields(logrus.Fields{"event_type": eventType, "channel": channel})
 		log.Trace("handle event")
 

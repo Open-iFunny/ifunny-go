@@ -1,6 +1,7 @@
 package ifunny
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -75,11 +76,12 @@ func newClient(authorization string, ua UserAgent, opts ...Option) *Client {
 // MakeClient constructs an authenticated client using a bearer token. It fetches
 // the authenticated user's account data and stores it in the returned client's
 // Self field. Returns an error if authentication fails or the account fetch fails.
-func MakeClient(bearer string, ua UserAgent, opts ...Option) (*Client, error) {
+// The ctx governs the initial /account fetch.
+func MakeClient(ctx context.Context, bearer string, ua UserAgent, opts ...Option) (*Client, error) {
 	client := newClient("bearer "+bearer, ua, opts...)
 	client.bearer = bearer
 
-	self, err := client.GetUser(compose.UserAccount())
+	self, err := client.GetUser(ctx, compose.UserAccount())
 	if err != nil {
 		return nil, err
 	}
@@ -134,8 +136,8 @@ func AsAPIError(err error) (*APIError, bool) {
 	return nil, false
 }
 
-func request(apiRoot string, desc compose.Request, header http.Header, client *http.Client) (*http.Response, error) {
-	request, err := http.NewRequest(desc.Method, apiRoot+desc.Path, desc.Body)
+func request(ctx context.Context, apiRoot string, desc compose.Request, header http.Header, client *http.Client) (*http.Response, error) {
+	request, err := http.NewRequestWithContext(ctx, desc.Method, apiRoot+desc.Path, desc.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -148,21 +150,17 @@ func request(apiRoot string, desc compose.Request, header http.Header, client *h
 	}
 
 	if r.StatusCode >= 400 {
+		defer r.Body.Close()
 		b, err := io.ReadAll(r.Body)
 		if err != nil {
 			return nil, fmt.Errorf("failed collecting HTTP error: %s", err)
 		}
 
-		unwrap := new(struct {
-			Msg []byte `json:"msg"`
-		})
-		if err := json.Unmarshal(b, unwrap); err != nil {
-			return nil, fmt.Errorf("failed to unwrap HTTP error: %s, body: %s", err, string(b))
-		}
-
 		apiErr := new(APIError)
 		if err := json.Unmarshal(b, apiErr); err != nil {
-			return nil, fmt.Errorf("failed to decode HTTP error: %s", err)
+			// Body isn't a structured API error (empty, plain text, etc.);
+			// surface the status and raw body without parsing around it.
+			return nil, fmt.Errorf("HTTP %d: %s", r.StatusCode, strings.TrimSpace(string(b)))
 		}
 
 		return nil, apiErr
@@ -181,23 +179,26 @@ func (client *Client) header() http.Header {
 
 // RequestJSON executes a composed API request and unmarshals the response body
 // into output as JSON. Returns errors from the network request or JSON decoding.
-// API errors (HTTP >= 400) are returned as *APIError wrapped in error.
-func (client *Client) RequestJSON(desc compose.Request, output any) error {
+// API errors (HTTP >= 400) are returned as *APIError wrapped in error. The ctx
+// governs the underlying HTTP request and is honored for cancellation/deadlines.
+func (client *Client) RequestJSON(ctx context.Context, desc compose.Request, output any) error {
 	traceID := uuid.New().String()
 	log := client.log.WithFields(logrus.Fields{
 		"trace_id": traceID,
 		"path":     desc.Path,
 		"method":   desc.Method,
 		"query":    desc.Query.Encode(),
-		"has_body": desc.Body != nil},
+		"has_body": desc.Body != nil,
+	},
 	)
 
 	log.Trace("make request")
-	response, err := request(client.apiRoot, desc, client.header(), client.http)
+	response, err := request(ctx, client.apiRoot, desc, client.header(), client.http)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
+	defer response.Body.Close()
 
 	log.Trace(fmt.Sprintf("got response %s", response.Status))
 	bodyBytes, err := io.ReadAll(response.Body)

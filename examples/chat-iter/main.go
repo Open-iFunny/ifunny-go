@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -17,10 +18,11 @@ func printChannel(c *ifunny.ChatChannel) {
 
 func main() {
 	q := "hello"
-	client, _ := ifunny.MakeClient(bearer, ifunny.RawUserAgent(userAgent))
+	ctx := context.Background()
+	client, _ := ifunny.MakeClient(ctx, bearer, ifunny.RawUserAgent(userAgent))
 
 	fmt.Printf("iterating results for q=%s\n", q)
-	iter := client.IterChannelsQuery(q)
+	iter := client.IterChannelsQuery(ctx, q)
 	for i := 0; i < 60; i++ {
 		r := <-iter
 		if r.Err != nil {

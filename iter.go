@@ -1,6 +1,8 @@
 package ifunny
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/open-ifunny/ifunny-go/compose"
 	"github.com/sirupsen/logrus"
@@ -15,7 +17,10 @@ type Page[T Comment | Content | User | ChatChannel] struct {
 
 // Result carries one item from an iterator or an error. Iterators close their
 // channel when done; a mid-iteration failure is delivered as a final Result
-// with Err set (and V zero-valued) before the channel closes.
+// with Err set (and V zero-valued) before the channel closes. Cancelling the
+// iterator's ctx delivers a final Result with Err = ctx.Err() on a best-effort
+// basis: it is sent only if the consumer is still receiving, so a consumer
+// that cancels and walks away never blocks the pager goroutine.
 type Result[T any] struct {
 	V   T
 	Err error
@@ -29,7 +34,7 @@ type Iterator[T any] struct {
 	Stop func()
 }
 
-func iterFrom[T Content | Comment | User | ChatChannel](client *Client, composer func(limit int, page compose.Page[string]) compose.Request, feeder func(compose.Request) (*Page[T], error)) <-chan Result[*T] {
+func iterFrom[T Content | Comment | User | ChatChannel](ctx context.Context, client *Client, composer func(limit int, page compose.Page[string]) compose.Request, feeder func(context.Context, compose.Request) (*Page[T], error)) <-chan Result[*T] {
 	page := compose.NoPage[string]()
 	data := make(chan Result[*T])
 
@@ -38,19 +43,39 @@ func iterFrom[T Content | Comment | User | ChatChannel](client *Client, composer
 		"trace_id": traceID,
 	})
 
+	// send delivers r on data, but bails out if ctx is cancelled so a
+	// downstream consumer that stops reading (or a cancelled request)
+	// never leaks this goroutine on a blocked send. On cancellation it
+	// makes a best-effort (non-blocking) delivery of ctx.Err() so a
+	// still-listening consumer can tell cancellation from exhaustion.
+	send := func(r Result[*T]) bool {
+		select {
+		case data <- r:
+			return true
+		case <-ctx.Done():
+			select {
+			case data <- Result[*T]{Err: ctx.Err()}:
+			default:
+			}
+			return false
+		}
+	}
+
 	go func() {
 		defer close(data)
 		for {
 			log.Trace("buffering a feed page")
-			items, err := feeder(composer(30, page))
+			items, err := feeder(ctx, composer(30, page))
 			if err != nil {
 				log.Trace("failed to get a feed page, exiting")
-				data <- Result[*T]{Err: err}
+				send(Result[*T]{Err: err})
 				return
 			}
 
 			for i := range items.Items {
-				data <- Result[*T]{V: &items.Items[i]}
+				if !send(Result[*T]{V: &items.Items[i]}) {
+					return
+				}
 			}
 
 			log.Tracef("next: %s, has next: %t",

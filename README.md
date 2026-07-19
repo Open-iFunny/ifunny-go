@@ -16,6 +16,7 @@ Anonymous, read-only client via a minted basic token:
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/open-ifunny/ifunny-go"
@@ -23,15 +24,16 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
 	basic, _ := ifunny.GenerateBasic()
 	ua := ifunny.Android{Version: "14"}.UserAgent()
 
 	client, _ := ifunny.MakeClientBasic(basic, ua)
-	if err := client.PrimeBasic(); err != nil { // ~15s server-side wait
+	if err := client.PrimeBasic(ctx); err != nil { // ~15s server-side wait
 		panic(err)
 	}
 
-	u, err := client.GetUser(compose.UserByNick("woof"))
+	u, err := client.GetUser(ctx, compose.UserByNick("woof"))
 	if err != nil {
 		panic(err)
 	}
@@ -39,7 +41,7 @@ func main() {
 }
 ```
 
-For an authenticated client (chat, personalized feeds, `Self`), pass a bearer token to `ifunny.MakeClient` instead. Iterators over feeds, comments, users, and chat channels live as `Iter*` methods on `*Client` and `*Chat`. See [`examples/`](examples/) for more.
+For an authenticated client (chat, personalized feeds, `Self`), pass a bearer token to `ifunny.MakeClient` instead. Every HTTP-backed accessor takes a `context.Context` as its first argument, so requests honor cancellation and deadlines; cancelling the ctx also stops an in-flight `Iter*` pager. Iterators over feeds, comments, users, and chat channels live as `Iter*` methods on `*Client` and `*Chat`. See [`examples/`](examples/) for more.
 
 ## TODO
 - [x] Move over the chat library code from [discovery-bot](https://github.com/open-ifunny/discovery-bot)

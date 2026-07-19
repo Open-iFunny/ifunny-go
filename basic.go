@@ -1,6 +1,7 @@
 package ifunny
 
 import (
+	"context"
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/hex"
@@ -125,9 +126,11 @@ func GenerateBasic() (string, error) {
 // PrimeBasic activates the basic token this client was constructed with: one
 // GET /counters, then the server-side ~15s wait. Call once on a freshly
 // generated token before making other requests. Uses the client's configured
-// *http.Client, so any custom transport/timeouts are honored.
-func (client *Client) PrimeBasic() error {
-	req, err := http.NewRequest("GET", client.apiRoot+"/counters", nil)
+// *http.Client, so any custom transport/timeouts are honored. The ctx governs
+// both the /counters request and the subsequent wait, so a cancelled ctx aborts
+// priming promptly and returns ctx.Err().
+func (client *Client) PrimeBasic(ctx context.Context) error {
+	req, err := http.NewRequestWithContext(ctx, "GET", client.apiRoot+"/counters", nil)
 	if err != nil {
 		return err
 	}
@@ -143,6 +146,10 @@ func (client *Client) PrimeBasic() error {
 		return fmt.Errorf("prime basic token: HTTP %d", resp.StatusCode)
 	}
 
-	time.Sleep(15 * time.Second)
-	return nil
+	select {
+	case <-time.After(15 * time.Second):
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

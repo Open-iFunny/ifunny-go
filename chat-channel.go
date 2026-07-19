@@ -1,6 +1,8 @@
 package ifunny
 
 import (
+	"context"
+
 	"github.com/gastrodon/turnpike"
 	"github.com/open-ifunny/ifunny-go/compose"
 	"github.com/sirupsen/logrus"
@@ -74,14 +76,14 @@ func (chat *Chat) handleChannelsRaw(handle func(eventType int, channel *ChatChan
 
 // OnChannelUpdate subscribes to channel join and invite events. The handler is called
 // with the event type and channel data. Returns an unsubscribe function.
-func (chat *Chat) OnChannelUpdate(handle func(eventType int, channel *ChatChannel) error) (func(), error) {
-	return chat.Subscribe(compose.JoinedChannels(chat.client.Self.ID), chat.handleChannelsRaw(handle))
+func (chat *Chat) OnChannelUpdate(ctx context.Context, handle func(eventType int, channel *ChatChannel) error) (func(), error) {
+	return chat.Subscribe(ctx, compose.JoinedChannels(chat.client.Self.ID), chat.handleChannelsRaw(handle))
 }
 
 // OnChannelInvite subscribes to channel invite events. The handler is called with the
 // event type and invited channel data. Returns an unsubscribe function.
-func (chat *Chat) OnChannelInvite(handle func(eventType int, channel *ChatChannel) error) (func(), error) {
-	return chat.Subscribe(compose.ReceiveInvite(chat.client.Self.ID), chat.handleChannelsRaw(handle))
+func (chat *Chat) OnChannelInvite(ctx context.Context, handle func(eventType int, channel *ChatChannel) error) (func(), error) {
+	return chat.Subscribe(ctx, compose.ReceiveInvite(chat.client.Self.ID), chat.handleChannelsRaw(handle))
 }
 
 // GetChannel executes a chat RPC call and unmarshals the result as a ChatChannel.
@@ -94,51 +96,51 @@ func (chat *Chat) OnChannelInvite(handle func(eventType int, channel *ChatChanne
 //
 // Example (fetch a public channel by name):
 //
-//	channel, err := chat.GetChannel(compose.GetChannel("chat.gamers"))
+//	channel, err := chat.GetChannel(ctx, compose.GetChannel("chat.gamers"))
 //	if err != nil {
 //		return err
 //	}
 //
 // Example (open a DM with another user):
 //
-//	channel, err := chat.GetChannel(compose.GetDMChannel(chat.client.Self.ID, "friend-id"))
-func (chat *Chat) GetChannel(call turnpike.Call) (*ChatChannel, error) {
+//	channel, err := chat.GetChannel(ctx, compose.GetDMChannel(chat.client.Self.ID, "friend-id"))
+func (chat *Chat) GetChannel(ctx context.Context, call turnpike.Call) (*ChatChannel, error) {
 	output := new(struct {
 		Chat *ChatChannel `json:"chat"`
 	})
 
-	err := chat.Call(call, output)
+	err := chat.Call(ctx, call, output)
 	return output.Chat, err
 }
 
 // GetChannels fetches all chat channels matching the given request.
-func (client *Client) GetChannels(desc compose.Request) ([]*ChatChannel, error) {
+func (client *Client) GetChannels(ctx context.Context, desc compose.Request) ([]*ChatChannel, error) {
 	output := new(struct {
 		Data struct {
 			Channels []*ChatChannel `json:"channels"`
 		} `json:"data"`
 	})
 
-	err := client.RequestJSON(desc, output)
+	err := client.RequestJSON(ctx, desc, output)
 	return output.Data.Channels, err
 }
 
 // GetChannelsPage fetches a single page of chat channels given a composed request.
 // It is used internally by channel iteration methods and exported for advanced use cases.
-func (client *Client) GetChannelsPage(desc compose.Request) (*Page[ChatChannel], error) {
+func (client *Client) GetChannelsPage(ctx context.Context, desc compose.Request) (*Page[ChatChannel], error) {
 	output := new(struct {
 		Data struct {
 			Channels Page[ChatChannel] `json:"channels"`
 		} `json:"data"`
 	})
-	err := client.RequestJSON(desc, output)
+	err := client.RequestJSON(ctx, desc, output)
 	return &output.Data.Channels, err
 }
 
 // IterChannelsQuery returns a channel that yields chat channels matching a search query.
 // The iterator automatically fetches new pages as needed.
-func (client *Client) IterChannelsQuery(query string) <-chan Result[*ChatChannel] {
-	return iterFrom(client, func(limit int, page compose.Page[string]) compose.Request {
+func (client *Client) IterChannelsQuery(ctx context.Context, query string) <-chan Result[*ChatChannel] {
+	return iterFrom(ctx, client, func(limit int, page compose.Page[string]) compose.Request {
 		return compose.ChatsQuery(query, limit, page)
 	}, client.GetChannelsPage)
 }
@@ -148,17 +150,32 @@ func (client *Client) IterChannelsQuery(query string) <-chan Result[*ChatChannel
 // one-shot iterator: it delivers every trending channel and then closes. A
 // fetch error is delivered as a final Result with Err set before the channel
 // closes, matching the Result/close conventions of the paginated iterators.
-func (client *Client) IterChannelsTrending() <-chan Result[*ChatChannel] {
+func (client *Client) IterChannelsTrending(ctx context.Context) <-chan Result[*ChatChannel] {
 	data := make(chan Result[*ChatChannel])
+	send := func(r Result[*ChatChannel]) bool {
+		select {
+		case data <- r:
+			return true
+		case <-ctx.Done():
+			// Best-effort delivery of the cancellation, matching iterFrom.
+			select {
+			case data <- Result[*ChatChannel]{Err: ctx.Err()}:
+			default:
+			}
+			return false
+		}
+	}
 	go func() {
 		defer close(data)
-		channels, err := client.GetChannels(compose.ChatsTrending)
+		channels, err := client.GetChannels(ctx, compose.ChatsTrending)
 		if err != nil {
-			data <- Result[*ChatChannel]{Err: err}
+			send(Result[*ChatChannel]{Err: err})
 			return
 		}
 		for _, channel := range channels {
-			data <- Result[*ChatChannel]{V: channel}
+			if !send(Result[*ChatChannel]{V: channel}) {
+				return
+			}
 		}
 	}()
 	return data

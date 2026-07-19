@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -16,10 +17,11 @@ func printContent(c *ifunny.Content) {
 }
 
 func main() {
-	client, _ := ifunny.MakeClient(bearer, ifunny.RawUserAgent(userAgent))
+	ctx := context.Background()
+	client, _ := ifunny.MakeClient(ctx, bearer, ifunny.RawUserAgent(userAgent))
 
 	fmt.Println("iterating features")
-	iter := client.IterFeed("featured")
+	iter := client.IterFeed(ctx, "featured")
 	for i := 0; i < 60; i++ {
 		r := <-iter
 		if r.Err != nil {
@@ -34,7 +36,7 @@ func main() {
 	}
 
 	fmt.Println("iterating our timeline")
-	iter = client.IterTimeline(client.Self.ID)
+	iter = client.IterTimeline(ctx, client.Self.ID)
 	for i := 0; i < 60; i++ {
 		r := <-iter
 		if r.Err != nil {
