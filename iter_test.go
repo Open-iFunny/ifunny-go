@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/open-ifunny/ifunny-go/compose"
 )
 
 // feedPageJSON is a GetFeedPage-shaped response with two items and hasNext=true,
@@ -35,7 +37,7 @@ func TestIterFeed_CancelClosesChannel(t *testing.T) {
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())
-	iter := client.IterFeed(ctx, "featured")
+	iter := client.IterContent(ctx, compose.NamedFeed("featured"))
 
 	// Consume one item to prove the pager is live, then cancel.
 	if r := <-iter; r.Err != nil {
@@ -71,7 +73,7 @@ func TestIterFeed_CancelMidFetchDeliversCtxErr(t *testing.T) {
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())
-	iter := client.IterFeed(ctx, "featured")
+	iter := client.IterContent(ctx, compose.NamedFeed("featured"))
 
 	time.AfterFunc(50*time.Millisecond, cancel)
 

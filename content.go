@@ -104,18 +104,12 @@ func (client *Client) GetFeedPage(ctx context.Context, request compose.Request) 
 }
 
 // IterContent returns a channel that yields content from an arbitrary feed
-// descriptor. It is the generic entry point behind IterFeed/IterTimeline/etc.,
-// and the way to iterate collective with custom knobs (see [compose.Collective]).
-// The iterator automatically fetches new pages as needed. Cancel ctx to stop.
+// descriptor. It is the generic entry point behind IterTimeline/IterCollective/etc.,
+// and the way to iterate a named feed (see [compose.NamedFeed]) or collective with
+// custom knobs (see [compose.Collective]). The iterator automatically fetches new
+// pages as needed. Cancel ctx to stop.
 func (client *Client) IterContent(ctx context.Context, feed compose.Feed) <-chan Result[*Content] {
 	return iterFrom(ctx, client, feed, client.GetFeedPage)
-}
-
-// IterFeed returns a channel that yields content from a named feed (e.g. "hot", "trending").
-// For the collective feed prefer [Client.IterCollective], which enables the
-// body-placement + tail-paging mitigations for its pagination size cliff.
-func (client *Client) IterFeed(ctx context.Context, feed string) <-chan Result[*Content] {
-	return client.IterContent(ctx, compose.NamedFeed(feed))
 }
 
 // IterCollective returns a channel that yields content from the collective feed,

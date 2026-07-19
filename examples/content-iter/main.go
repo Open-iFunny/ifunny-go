@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/open-ifunny/ifunny-go"
+	"github.com/open-ifunny/ifunny-go/compose"
 )
 
 var bearer = os.Getenv("IFUNNY_BEARER")
@@ -21,8 +22,8 @@ func main() {
 	client, _ := ifunny.MakeClient(ctx, bearer, ifunny.RawUserAgent(userAgent))
 
 	fmt.Println("iterating features")
-	iter := client.IterFeed(ctx, "featured")
-	for i := 0; i < 60; i++ {
+	iter := client.IterContent(ctx, compose.NamedFeed("featured"))
+	for range 60 {
 		r := <-iter
 		if r.Err != nil {
 			panic(r.Err)
@@ -37,7 +38,7 @@ func main() {
 
 	fmt.Println("iterating our timeline")
 	iter = client.IterTimeline(ctx, client.Self.ID)
-	for i := 0; i < 60; i++ {
+	for range 60 {
 		r := <-iter
 		if r.Err != nil {
 			panic(r.Err)
