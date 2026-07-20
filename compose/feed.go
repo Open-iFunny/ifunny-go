@@ -39,6 +39,13 @@ type Feed struct {
 	// PagerIn selects query vs body placement of the page token. Body placement
 	// only takes effect on POST feeds; it is ignored (treated as InQuery) for GET.
 	PagerIn Placement
+
+	// Seed is the page to start iteration from. The zero value (Page{NONE, nil},
+	// equivalent to NoPage()) starts from the top of the feed — the historical
+	// behavior. Set it to resume or skip forward: e.g. Next(IDs{...}) on the
+	// collective feed seeds the cursor's exclusion set so paging begins past a
+	// known set of already-seen IDs.
+	Seed Page
 }
 
 // Request builds the request for a single page. limit and any static Params go

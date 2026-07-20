@@ -35,7 +35,7 @@ type Iterator[T any] struct {
 }
 
 func iterFrom[T Content | Comment | User | ChatChannel](ctx context.Context, client *Client, feed compose.Feed, feeder func(context.Context, compose.Request) (*Page[T], error)) <-chan Result[*T] {
-	page := compose.NoPage()
+	page := feed.Seed
 	data := make(chan Result[*T])
 
 	traceID := uuid.New().String()
