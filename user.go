@@ -70,17 +70,13 @@ func (client *Client) GetUsersPage(ctx context.Context, request compose.Request)
 // IterSubscribers returns a channel that yields users who follow the user (identified by ID).
 // The iterator automatically fetches new pages as needed.
 func (client *Client) IterSubscribers(ctx context.Context, id string) <-chan Result[*User] {
-	return iterFrom(ctx, client, func(limit int, page compose.Page[string]) compose.Request {
-		return compose.Subscribers(id, limit, page)
-	}, client.GetUsersPage)
+	return iterFrom(ctx, client, compose.Subscribers(id), client.GetUsersPage)
 }
 
 // IterSubscriptions returns a channel that yields users followed by the user (identified by ID).
 // The iterator automatically fetches new pages as needed.
 func (client *Client) IterSubscriptions(ctx context.Context, id string) <-chan Result[*User] {
-	return iterFrom(ctx, client, func(limit int, page compose.Page[string]) compose.Request {
-		return compose.Subscriptions(id, limit, page)
-	}, client.GetUsersPage)
+	return iterFrom(ctx, client, compose.Subscriptions(id), client.GetUsersPage)
 }
 
 // GetUsers executes a chat RPC call and unmarshals the result as a list of users.

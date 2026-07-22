@@ -40,13 +40,3 @@ func UserByNick(nick string) Request {
 func UserAccount() Request {
 	return get("/account", nil)
 }
-
-// Subscribers composes a request for a user's subscribers with pagination.
-func Subscribers(id string, limit int, page Page[string]) Request {
-	return get("/users/"+id+"/subscribers", feedParams(limit, page))
-}
-
-// Subscriptions composes a request for a user's subscriptions with pagination.
-func Subscriptions(id string, limit int, page Page[string]) Request {
-	return get("/users/"+id+"/subscriptions", feedParams(limit, page))
-}

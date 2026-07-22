@@ -142,6 +142,11 @@ func request(ctx context.Context, apiRoot string, desc compose.Request, header h
 		return nil, err
 	}
 	request.Header = header
+	for k, vs := range desc.Header {
+		for _, v := range vs {
+			request.Header.Add(k, v)
+		}
+	}
 	request.URL.RawQuery = desc.Query.Encode()
 
 	r, err := client.Do(request)

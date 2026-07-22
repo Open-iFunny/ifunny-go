@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/open-ifunny/ifunny-go/compose"
 )
 
 // feedPageJSON is a GetFeedPage-shaped response with two items and hasNext=true,
@@ -35,7 +37,7 @@ func TestIterFeed_CancelClosesChannel(t *testing.T) {
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())
-	iter := client.IterFeed(ctx, "featured")
+	iter := client.IterContent(ctx, compose.NamedFeed("featured"))
 
 	// Consume one item to prove the pager is live, then cancel.
 	if r := <-iter; r.Err != nil {
@@ -71,7 +73,7 @@ func TestIterFeed_CancelMidFetchDeliversCtxErr(t *testing.T) {
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())
-	iter := client.IterFeed(ctx, "featured")
+	iter := client.IterContent(ctx, compose.NamedFeed("featured"))
 
 	time.AfterFunc(50*time.Millisecond, cancel)
 
@@ -93,6 +95,42 @@ func TestIterFeed_CancelMidFetchDeliversCtxErr(t *testing.T) {
 		case <-deadline:
 			t.Fatal("iterator did not close within 2s of cancel")
 		}
+	}
+}
+
+// TestIterFeed_SeedStartsFromCursor confirms Feed.Seed is used verbatim for the
+// first request: a collective feed seeded with a set of IDs posts exactly that
+// cursor in the body on page one (before any Pager transform, which only acts on
+// server-returned cursors thereafter).
+func TestIterFeed_SeedStartsFromCursor(t *testing.T) {
+	seeded := make(chan string, 1)
+	client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			r.ParseForm()
+			select {
+			case seeded <- r.PostFormValue(string(compose.NEXT)):
+			default:
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		// hasNext=false so iteration stops after the seeded first page.
+		w.Write([]byte(`{"data":{"content":{"items":[{"id":"a"}],"paging":{"cursors":{"next":"n"},"hasNext":false}}}}`))
+	})
+
+	feed := compose.Collective(30)
+	feed.Seed = compose.Next(compose.IDs{"1", "2"})
+	want := compose.IDs{"1", "2"}.String()
+
+	for range client.IterContent(context.Background(), feed) {
+	}
+
+	select {
+	case got := <-seeded:
+		if got != want {
+			t.Fatalf("seeded cursor = %q, want %q", got, want)
+		}
+	default:
+		t.Fatal("no POST request captured — seed did not drive the first request")
 	}
 }
 

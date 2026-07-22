@@ -103,36 +103,43 @@ func (client *Client) GetFeedPage(ctx context.Context, request compose.Request) 
 	return &content.Data.Content, err
 }
 
-// IterFeed returns a channel that yields content from a named feed (e.g. "hot", "trending").
-// The iterator automatically fetches new pages as needed. Cancel ctx to stop iteration.
-func (client *Client) IterFeed(ctx context.Context, feed string) <-chan Result[*Content] {
-	return iterFrom(ctx, client, func(limit int, page compose.Page[string]) compose.Request { return compose.Feed(feed, limit, page) }, client.GetFeedPage)
+// IterContent returns a channel that yields content from an arbitrary feed
+// descriptor. It is the generic entry point behind IterTimeline/IterCollective/etc.,
+// and the way to iterate a named feed (see [compose.NamedFeed]) or collective with
+// custom knobs (see [compose.Collective]). The iterator automatically fetches new
+// pages as needed. Cancel ctx to stop.
+func (client *Client) IterContent(ctx context.Context, feed compose.Feed) <-chan Result[*Content] {
+	return iterFrom(ctx, client, feed, client.GetFeedPage)
+}
+
+// IterCollective returns a channel that yields content from the collective feed,
+// posting the cursor in the request body and reducing each outgoing token to the
+// last `tail` seen IDs to dodge the collective pagination size cliff. A tail of 0
+// disables tail-paging (verbatim cursor) while keeping body placement.
+func (client *Client) IterCollective(ctx context.Context, tail int) <-chan Result[*Content] {
+	return client.IterContent(ctx, compose.Collective(tail))
 }
 
 // IterTimeline returns a channel that yields content posted by a user (identified by ID).
 // The iterator automatically fetches new pages as needed.
 func (client *Client) IterTimeline(ctx context.Context, id string) <-chan Result[*Content] {
-	return iterFrom(ctx, client, func(limit int, page compose.Page[string]) compose.Request { return compose.Timeline(id, limit, page) }, client.GetFeedPage)
+	return client.IterContent(ctx, compose.Timeline(id))
 }
 
 // IterTimelineByNick returns a channel that yields content posted by a user (identified by nick/username).
 // The iterator automatically fetches new pages as needed.
 func (client *Client) IterTimelineByNick(ctx context.Context, nick string) <-chan Result[*Content] {
-	return iterFrom(ctx, client, func(limit int, page compose.Page[string]) compose.Request {
-		return compose.TimelineByNick(nick, limit, page)
-	}, client.GetFeedPage)
+	return client.IterContent(ctx, compose.TimelineByNick(nick))
 }
 
 // IterSmiles returns a channel that yields users who smiled at the content (identified by ID).
 // The iterator automatically fetches new pages as needed.
 func (client *Client) IterSmiles(ctx context.Context, id string) <-chan Result[*User] {
-	return iterFrom(ctx, client, func(limit int, page compose.Page[string]) compose.Request { return compose.Smiles(id, limit, page) }, client.GetUsersPage)
+	return iterFrom(ctx, client, compose.Smiles(id), client.GetUsersPage)
 }
 
 // IterRepublishers returns a channel that yields users who republished the content (identified by ID).
 // The iterator automatically fetches new pages as needed.
 func (client *Client) IterRepublishers(ctx context.Context, id string) <-chan Result[*User] {
-	return iterFrom(ctx, client, func(limit int, page compose.Page[string]) compose.Request {
-		return compose.Republished(id, limit, page)
-	}, client.GetUsersPage)
+	return iterFrom(ctx, client, compose.Republished(id), client.GetUsersPage)
 }

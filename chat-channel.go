@@ -140,9 +140,7 @@ func (client *Client) GetChannelsPage(ctx context.Context, desc compose.Request)
 // IterChannelsQuery returns a channel that yields chat channels matching a search query.
 // The iterator automatically fetches new pages as needed.
 func (client *Client) IterChannelsQuery(ctx context.Context, query string) <-chan Result[*ChatChannel] {
-	return iterFrom(ctx, client, func(limit int, page compose.Page[string]) compose.Request {
-		return compose.ChatsQuery(query, limit, page)
-	}, client.GetChannelsPage)
+	return iterFrom(ctx, client, compose.Chats(query), client.GetChannelsPage)
 }
 
 // IterChannelsTrending returns a channel that yields the current trending chat

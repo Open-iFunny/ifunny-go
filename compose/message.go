@@ -26,8 +26,12 @@ func EventsIn(channel string) turnpike.Subscribe {
 	}
 }
 
-// ListMessages composes a call to list messages in a channel with pagination.
-func ListMessages(channel string, limit int, page Page[int]) turnpike.Call {
+// ListMessages composes a call to list messages in a channel. Unlike the HTTP
+// feeds, the WAMP list_messages cursor is numeric and preserves its type on the
+// wire, so it does not go through [Page]/[Value]: pass the direction (NONE for
+// the first page, NEXT or PREV to page) with the integer cursor from a prior
+// response's Next/Prev. A NONE direction omits the cursor entirely.
+func ListMessages(channel string, limit int, dir pageDirection, cursor int) turnpike.Call {
 	call := turnpike.Call{
 		Procedure: URI("list_messages"),
 		ArgumentsKw: map[string]any{
@@ -36,8 +40,8 @@ func ListMessages(channel string, limit int, page Page[int]) turnpike.Call {
 		},
 	}
 
-	if page.Key != NONE {
-		call.ArgumentsKw[string(page.Key)] = page.Value
+	if dir != NONE {
+		call.ArgumentsKw[string(dir)] = cursor
 	}
 
 	return call

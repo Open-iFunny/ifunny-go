@@ -1,9 +1,7 @@
 package compose
 
 import (
-	"net/url"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/gastrodon/turnpike"
@@ -132,15 +130,3 @@ func ExitChannel(channel string) turnpike.Call {
 var (
 	ChatsTrending = Request{Method: "GET", Path: "/chats/trending"}
 )
-
-// ChatsQuery composes a request to search for open channels by query string with pagination.
-func ChatsQuery(query string, limit int, page Page[string]) Request {
-	return Request{
-		Method: "GET", Path: "/chats/open_channels",
-		Query: url.Values{
-			"q":              []string{query},
-			"limit":          []string{strconv.Itoa(limit)},
-			string(page.Key): []string{page.Value},
-		},
-	}
-}

@@ -70,7 +70,7 @@ func (client *Client) GetCommentPage(ctx context.Context, request compose.Reques
 // IterComments returns a channel that yields top-level comments on content (identified by ID).
 // The iterator automatically fetches new pages as needed.
 func (client *Client) IterComments(ctx context.Context, id string) <-chan Result[*Comment] {
-	return iterFrom(ctx, client, func(limit int, page compose.Page[string]) compose.Request { return compose.Comments(id, limit, page) }, client.GetCommentPage)
+	return iterFrom(ctx, client, compose.Comments(id), client.GetCommentPage)
 }
 
 // GetRepliesPage fetches a single page of replies to a comment given a composed request.
@@ -89,7 +89,5 @@ func (client *Client) GetRepliesPage(ctx context.Context, request compose.Reques
 // IterReplies returns a channel that yields replies to a specific comment (identified by cid on content id).
 // The iterator automatically fetches new pages as needed.
 func (client *Client) IterReplies(ctx context.Context, cid, id string) <-chan Result[*Comment] {
-	return iterFrom(ctx, client, func(limit int, page compose.Page[string]) compose.Request {
-		return compose.Replies(cid, id, limit, page)
-	}, client.GetRepliesPage)
+	return iterFrom(ctx, client, compose.Replies(cid, id), client.GetRepliesPage)
 }
