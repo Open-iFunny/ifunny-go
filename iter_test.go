@@ -11,7 +11,7 @@ import (
 	"github.com/open-ifunny/ifunny-go/compose"
 )
 
-// feedPageJSON is a GetFeedPage-shaped response with two items and hasNext=true,
+// feedPageJSON is a FeedEnvelope-shaped response with two items and hasNext=true,
 // so an iterator against it pages forever until stopped.
 const feedPageJSON = `{"data":{"content":{"items":[{"id":"a"},{"id":"b"}],"paging":{"cursors":{"next":"n"},"hasNext":true}}}}`
 

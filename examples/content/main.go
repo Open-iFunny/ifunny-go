@@ -29,7 +29,7 @@ func main() {
 
 	feed := compose.NamedFeed("featured")
 	feed.Limit = 5
-	page, err := client.GetFeedPage(ctx, feed.Request(compose.NoPage()))
+	page, err := ifunny.FetchPage[ifunny.FeedEnvelope](ctx, client, feed.Request(compose.NoPage()))
 	if err != nil {
 		panic(err)
 	}
@@ -43,7 +43,7 @@ func main() {
 		fmt.Println("that was the end of the feed")
 	}
 
-	page, err = client.GetFeedPage(ctx, feed.Request(compose.Next(compose.Literal{Wrapped: page.Paging.Cursors.Next})))
+	page, err = ifunny.FetchPage[ifunny.FeedEnvelope](ctx, client, feed.Request(compose.Next(compose.Literal{Wrapped: page.Paging.Cursors.Next})))
 	if err != nil {
 		panic(err)
 	}

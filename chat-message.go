@@ -119,7 +119,7 @@ func (chat *Chat) IterMessages(ctx context.Context, desc turnpike.Call) <-chan R
 		case data <- r:
 			return true
 		case <-ctx.Done():
-			// Best-effort delivery of the cancellation, matching iterFrom.
+			// Best-effort delivery of the cancellation, matching Iter.
 			select {
 			case data <- Result[*ChatEvent]{Err: ctx.Err()}:
 			default:

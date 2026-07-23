@@ -26,15 +26,41 @@ type Result[T any] struct {
 	Err error
 }
 
-// Iterator is a convenience wrapper around a channel of Results. It holds functions
-// to obtain the result channel (Iter) and to stop iteration early (Stop). Not
-// currently used by the root package; it is available for future use or custom iterators.
-type Iterator[T any] struct {
-	Iter func() <-chan Result[T]
-	Stop func()
+// pageOf is any API response envelope that carries a [Page] of T. Each paginated
+// endpoint family wraps its page in a different JSON shape (feeds under
+// data.content, explore under data.value.context, subscribers under data.users,
+// and so on); the envelope type is the single place that knows where its page
+// lives. page returns the whole [Page] — items and the paging [Cursor] together —
+// so the pagination token every feed relies on to advance rides along with the
+// items rather than needing a second, envelope-specific accessor.
+type pageOf[T Comment | Content | User | ChatChannel] interface {
+	page() Page[T]
 }
 
-func iterFrom[T Content | Comment | User | ChatChannel](ctx context.Context, client *Client, feed compose.Feed, feeder func(context.Context, compose.Request) (*Page[T], error)) <-chan Result[*T] {
+// FetchPage fetches and decodes one page from request. The response envelope is
+// selected by the type argument E: FetchPage[FeedEnvelope] for a data.content
+// feed, FetchPage[ExploreEnvelope[Content]] for an explore compilation,
+// FetchPage[UsersEnvelope] for a subscriber list, and so on. T is inferred from
+// E, so only the envelope need be named at the call site.
+func FetchPage[E pageOf[T], T Comment | Content | User | ChatChannel](ctx context.Context, client *Client, request compose.Request) (*Page[T], error) {
+	var env E
+	if err := client.RequestJSON(ctx, request, &env); err != nil {
+		return nil, err
+	}
+	page := env.page()
+	return &page, nil
+}
+
+// Iter drives pagination over feed, decoding each page with the envelope named
+// by E, and returns a channel of Results yielding *T. It is the generic engine
+// behind IterContent, IterExploreContent, IterSubscribers and the rest, and the
+// public escape hatch for iterating any feed descriptor against any known
+// envelope — e.g. Iter[FeedEnvelope](ctx, client, compose.NamedFeed("featured")).
+//
+// Pagination follows the server's cursor (each page's Paging), transformed by
+// feed.Pager and seeded by feed.Seed. Cancel ctx to stop; see [Result] for the
+// channel-close and cancellation contract.
+func Iter[E pageOf[T], T Content | Comment | User | ChatChannel](ctx context.Context, client *Client, feed compose.Feed) <-chan Result[*T] {
 	page := feed.Seed
 	data := make(chan Result[*T])
 
@@ -65,7 +91,7 @@ func iterFrom[T Content | Comment | User | ChatChannel](ctx context.Context, cli
 		defer close(data)
 		for {
 			log.Trace("buffering a feed page")
-			items, err := feeder(ctx, feed.Request(page))
+			items, err := FetchPage[E](ctx, client, feed.Request(page))
 			if err != nil {
 				log.Trace("failed to get a feed page, exiting")
 				send(Result[*T]{Err: err})

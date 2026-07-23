@@ -20,7 +20,7 @@ func printComment(c *ifunny.Comment) {
 func main() {
 	ctx := context.Background()
 	client, _ := ifunny.MakeClient(ctx, bearer, ifunny.RawUserAgent(userAgent))
-	comments, err := client.GetCommentPage(ctx, compose.Comments("r4mB8i4NA").Request(compose.NoPage()))
+	comments, err := ifunny.FetchPage[ifunny.CommentsEnvelope](ctx, client, compose.Comments("r4mB8i4NA").Request(compose.NoPage()))
 	if err != nil {
 		panic(err)
 	}
@@ -31,7 +31,7 @@ func main() {
 
 	featuredFeed := compose.NamedFeed("featured")
 	featuredFeed.Limit = 1
-	featured, err := client.GetFeedPage(ctx, featuredFeed.Request(compose.NoPage()))
+	featured, err := ifunny.FetchPage[ifunny.FeedEnvelope](ctx, client, featuredFeed.Request(compose.NoPage()))
 	if err != nil {
 		panic(err)
 	}
