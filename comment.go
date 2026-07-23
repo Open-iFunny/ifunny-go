@@ -64,18 +64,18 @@ type CommentsEnvelope struct {
 
 func (e CommentsEnvelope) page() Page[Comment] { return e.Data.Comments }
 
-// IterCommentsRoots returns a channel that yields only the top-level (root)
-// comments on content (identified by ID); replies are not descended into. The
-// iterator automatically fetches new pages as needed. Use [Client.IterCommentsForest]
-// to walk roots and all of their nested replies.
-func (client *Client) IterCommentsRoots(ctx context.Context, id string) <-chan Result[*Comment] {
+// IterComments returns a channel that yields only the top-level (root) comments
+// on content (identified by ID); replies are not descended into. The iterator
+// automatically fetches new pages as needed. Use [Client.IterCommentsForest] to
+// walk roots and all of their nested replies.
+func (client *Client) IterComments(ctx context.Context, id string) <-chan Result[*Comment] {
 	return Iter[CommentsEnvelope](ctx, client, compose.Comments(id))
 }
 
 // IterCommentsForest returns a channel that yields every comment on content
 // (identified by ID) in depth-first order: each root comment is emitted, then
 // its replies recursively (a reply and its own replies before the next sibling),
-// then the next root. It stitches [Client.IterCommentsRoots] and
+// then the next root. It stitches [Client.IterComments] and
 // [Client.IterReplies] together, descending into a comment only when its
 // reported reply count (Num.Replies) is non-zero to avoid empty reply requests
 // on leaves.
@@ -121,7 +121,7 @@ func (client *Client) IterCommentsForest(ctx context.Context, id string) <-chan 
 
 	go func() {
 		defer close(data)
-		walk(client.IterCommentsRoots(ctx, id))
+		walk(client.IterComments(ctx, id))
 	}()
 
 	return data

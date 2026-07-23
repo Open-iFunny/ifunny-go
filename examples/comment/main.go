@@ -36,7 +36,7 @@ func main() {
 		panic(err)
 	}
 
-	data := client.IterCommentsRoots(ctx, featured.Items[0].ID)
+	data := client.IterComments(ctx, featured.Items[0].ID)
 	for i := 0; i < 60; i++ {
 		r := <-data
 		if r.Err != nil {
