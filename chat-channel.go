@@ -30,15 +30,6 @@ type ChatChannel struct {
 	} `json:"user"`
 }
 
-// ChatChannelPage wraps a paginated response of chat channels and a count.
-type ChatChannelPage struct {
-	Channels struct {
-		Items  []*ChatChannel `json:"items"`
-		Paging Cursor         `json:"paging"`
-	} `json:"channels"`
-	Num int `json:"num"`
-}
-
 func (chat *Chat) handleChannelsRaw(handle func(eventType int, channel *ChatChannel) error) EventHandler {
 	return func(eventType int, kwargs map[string]any) error {
 		log := chat.client.log.WithFields(logrus.Fields{"event_type": eventType, "kwargs": kwargs})
