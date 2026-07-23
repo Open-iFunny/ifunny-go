@@ -14,7 +14,7 @@ var userAgent = os.Getenv("IFUNNY_USER_AGENT")
 
 func printContent(c *ifunny.Content) {
 	fmt.Printf("[%s @ %d]: tags: %v, smiles: %d\n",
-		c.Creator.Nick, c.PublishAt, c.Tags, c.Num.Smiles)
+		c.Creator.Nick, c.PublushAt, c.Tags, c.Num.Smiles)
 }
 
 func main() {

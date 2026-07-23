@@ -2,7 +2,6 @@ package ifunny
 
 import (
 	"context"
-	"time"
 
 	"github.com/open-ifunny/ifunny-go/compose"
 )
@@ -16,38 +15,21 @@ const (
 	CONTENT_COMICS     = "comics"     // created from the in-app comic maker
 )
 
-// Content states returned by the API. A delayed post is one sitting on a
-// publish timer (Content.PublishAt) that has not fired yet.
-const (
-	STATE_PUBLISHED = "published"
-	STATE_DELAYED   = "delayed"
-)
-
-// Content visibility values, settable on pending delayed posts.
-const (
-	VISIBILITY_PUBLIC      = "public"      // eligible for collective and featured
-	VISIBILITY_SUBSCRIBERS = "subscribers" // subscriber and timeline feeds only
-)
-
 // Content represents a post (image, video, or comic) on iFunny. It includes metadata
 // like creation date, stats (smiles, comments), and the creator's information.
 type Content struct {
-	Type        string   `json:"type"`
-	ID          string   `json:"id"`
-	Link        string   `json:"link"`
-	DateCreated int64    `json:"date_created"`
-	// PublishAt is the unix time (seconds) the post's publish timer fired or
-	// will fire. For STATE_DELAYED content it is in the future; comparing it
-	// against DateCreated across a feed is the raw material for modeling the
-	// feed's drop cadence.
-	PublishAt int64 `json:"publish_at"`
+	Type        string `json:"type"`
+	ID          string `json:"id"`
+	Link        string `json:"link"`
+	DateCreated int64  `json:"date_created"`
+	PublushAt   int64  `json:"publish_at"`
 	// IssueAt is the unix time (seconds) the post was featured — the drop
 	// ("issue") it shipped in. Zero for content never featured. See
 	// [Client.GetNextIssueTime] for the upcoming drop.
-	IssueAt int64 `json:"issue_at"`
-	Tags        []string `json:"tags"`
-	State       string   `json:"state"`
-	ShotStatus  string   `json:"shot_status"`
+	IssueAt    int64    `json:"issue_at"`
+	Tags       []string `json:"tags"`
+	State      string   `json:"state"`
+	ShotStatus string   `json:"shot_status"`
 
 	FastStart  bool `json:"fast_start"`
 	IsFeatured bool `json:"is_featured"`
@@ -110,21 +92,6 @@ func (client *Client) GetContent(ctx context.Context, id string) (*Content, erro
 	})
 	err := client.RequestJSON(ctx, compose.ContentByID(id), content)
 	return &content.Data, err
-}
-
-// SetContentSchedule moves the publish timer of a pending delayed post
-// (STATE_DELAYED) to publishAt. The API stores second precision; sub-second
-// components are dropped. Fetch the content again with GetContent to observe
-// the updated state.
-func (client *Client) SetContentSchedule(ctx context.Context, id string, publishAt time.Time) error {
-	return client.RequestJSON(ctx, compose.ContentSchedule(id, publishAt.Unix()), &struct{}{})
-}
-
-// SetContentVisibility changes the visibility of a pending delayed post to one
-// of the VISIBILITY_* values. Fetch the content again with GetContent to
-// observe the updated state.
-func (client *Client) SetContentVisibility(ctx context.Context, id, visibility string) error {
-	return client.RequestJSON(ctx, compose.ContentVisibility(id, visibility), &struct{}{})
 }
 
 // GetFeedPage fetches a single page of content given a composed request. It is used
