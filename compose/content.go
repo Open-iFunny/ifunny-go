@@ -1,8 +1,38 @@
 package compose
 
+import (
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+)
+
 // ContentByID composes a request for content by ID.
 func ContentByID(id string) Request {
 	return get("/content/"+id, nil)
+}
+
+// patchContent composes a urlencoded PATCH against a content item, the wire
+// form the app uses to edit pending delayed ("timer") posts.
+func patchContent(id string, form url.Values) Request {
+	return Request{
+		Method: "PATCH",
+		Path:   "/content/" + id,
+		Body:   strings.NewReader(form.Encode()),
+		Header: http.Header{"Content-Type": {"application/x-www-form-urlencoded"}},
+	}
+}
+
+// ContentSchedule composes a request that moves the publish timer of a pending
+// delayed post. publishAt is a unix timestamp in seconds.
+func ContentSchedule(id string, publishAt int64) Request {
+	return patchContent(id, url.Values{"publish_at": {strconv.FormatInt(publishAt, 10)}})
+}
+
+// ContentVisibility composes a request that changes the visibility of a
+// pending delayed post (see VISIBILITY_* in the root package).
+func ContentVisibility(id, visibility string) Request {
+	return patchContent(id, url.Values{"visibility": {visibility}})
 }
 
 /*
