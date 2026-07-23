@@ -15,27 +15,27 @@ func TestContent_Payload_DecodesEveryKnownKind(t *testing.T) {
 		want Payload
 	}{
 		{"pic", `{"type":"pic","pic":{"webp_url":"https://x/pic.webp"}}`,
-			&PicPayload{WebpURL: "https://x/pic.webp"}},
+			&PayloadPic{WebpURL: "https://x/pic.webp"}},
 		{"comics", `{"type":"comics","comics":{"webp_url":"https://x/comic.webp"}}`,
-			&PicPayload{WebpURL: "https://x/comic.webp"}},
+			&PayloadPic{WebpURL: "https://x/comic.webp"}},
 		{"mem", `{"type":"mem","mem":{"webp_url":"https://x/meme.webp"}}`,
-			&PicPayload{WebpURL: "https://x/meme.webp"}},
+			&PayloadPic{WebpURL: "https://x/meme.webp"}},
 		{"video_clip", `{"type":"video_clip","video_clip":{"screen_url":"https://x/s.jpg","bytes":10,"source_type":"user","duration":5}}`,
-			&VideoClipPayload{ScreenURL: "https://x/s.jpg", Bytes: 10, SourceType: "user", Duration: 5}},
+			&PayloadVideoClip{ScreenURL: "https://x/s.jpg", Bytes: 10, SourceType: "user", Duration: 5}},
 		{"video", `{"type":"video","video":{"url":"https://x/v.mp4","duration":5,"length":5}}`,
-			&VideoPayload{SourceURL: "https://x/v.mp4", Duration: 5, Length: 5}},
+			&PayloadVideo{SourceURL: "https://x/v.mp4", Duration: 5, Length: 5}},
 		{"vine", `{"type":"vine","vine":{"screen_url":"https://x/s.jpg","bytes":10}}`,
-			&VinePayload{ScreenURL: "https://x/s.jpg", Bytes: 10}},
+			&PayloadVine{ScreenURL: "https://x/s.jpg", Bytes: 10}},
 		{"coub", `{"type":"coub","coub":{"screen_url":"https://x/s.jpg","bytes":10,"trackback_url":"https://coub.com/x","duration":5}}`,
-			&CoubPayload{ScreenURL: "https://x/s.jpg", Bytes: 10, TrackbackURL: "https://coub.com/x", Duration: 5}},
+			&PayloadCoub{ScreenURL: "https://x/s.jpg", Bytes: 10, TrackbackURL: "https://coub.com/x", Duration: 5}},
 		{"gif", `{"type":"gif","gif":{"screen_url":"https://x/s.jpg","bytes":10,"mp4_url":"https://x/g.mp4","mp4_bytes":20}}`,
-			&GifPayload{ScreenURL: "https://x/s.jpg", Bytes: 10, Mp4URL: "https://x/g.mp4", Mp4Bytes: 20}},
+			&PayloadGif{ScreenURL: "https://x/s.jpg", Bytes: 10, Mp4URL: "https://x/g.mp4", Mp4Bytes: 20}},
 		{"gif_caption", `{"type":"gif_caption","gif":{"screen_url":"https://x/s.jpg","bytes":10,"mp4_url":"https://x/g.mp4","mp4_bytes":20,"caption_text":"lol"}}`,
-			&GifPayload{ScreenURL: "https://x/s.jpg", Bytes: 10, Mp4URL: "https://x/g.mp4", Mp4Bytes: 20, CaptionText: "lol"}},
+			&PayloadGif{ScreenURL: "https://x/s.jpg", Bytes: 10, Mp4URL: "https://x/g.mp4", Mp4Bytes: 20, CaptionText: "lol"}},
 		{"caption", `{"type":"caption","caption":{"caption_text":"lol"}}`,
-			&CaptionPayload{CaptionText: "lol"}},
+			&PayloadCaption{CaptionText: "lol"}},
 		{"app", `{"type":"app","app":{"url":"https://x/app","is_scroll_allowed":true}}`,
-			&AppPayload{SourceURL: "https://x/app", IsScrollAllowed: true}},
+			&PayloadApp{SourceURL: "https://x/app", IsScrollAllowed: true}},
 	}
 
 	for _, tc := range cases {
@@ -78,27 +78,27 @@ func TestContent_Payload_UndocumentedKinds(t *testing.T) {
 // implement, since that's the whole point of splitting them out instead of
 // one bloated interface.
 func TestPayload_CapabilityInterfaces(t *testing.T) {
-	pic := &PicPayload{WebpURL: "https://x/p.webp"}
-	assertImplements[Media](t, "PicPayload", pic)
+	pic := &PayloadPic{WebpURL: "https://x/p.webp"}
+	assertImplements[Media](t, "PayloadPic", pic)
 
-	clip := &VideoClipPayload{ScreenURL: "https://x/s.jpg"}
-	assertImplements[Preview](t, "VideoClipPayload", clip)
-	assertImplements[Sized](t, "VideoClipPayload", clip)
+	clip := &PayloadVideoClip{ScreenURL: "https://x/s.jpg"}
+	assertImplements[Preview](t, "PayloadVideoClip", clip)
+	assertImplements[Sized](t, "PayloadVideoClip", clip)
 
-	video := &VideoPayload{SourceURL: "https://x/v.mp4"}
-	assertImplements[Media](t, "VideoPayload", video)
+	video := &PayloadVideo{SourceURL: "https://x/v.mp4"}
+	assertImplements[Media](t, "PayloadVideo", video)
 
-	gif := &GifPayload{Mp4URL: "https://x/g.mp4", ScreenURL: "https://x/s.jpg", CaptionText: "lol"}
-	assertImplements[Media](t, "GifPayload", gif)
-	assertImplements[Preview](t, "GifPayload", gif)
-	assertImplements[Sized](t, "GifPayload", gif)
-	assertImplements[Captioned](t, "GifPayload", gif)
+	gif := &PayloadGif{Mp4URL: "https://x/g.mp4", ScreenURL: "https://x/s.jpg", CaptionText: "lol"}
+	assertImplements[Media](t, "PayloadGif", gif)
+	assertImplements[Preview](t, "PayloadGif", gif)
+	assertImplements[Sized](t, "PayloadGif", gif)
+	assertImplements[Captioned](t, "PayloadGif", gif)
 
-	caption := &CaptionPayload{CaptionText: "lol"}
-	assertImplements[Captioned](t, "CaptionPayload", caption)
+	caption := &PayloadCaption{CaptionText: "lol"}
+	assertImplements[Captioned](t, "PayloadCaption", caption)
 
-	app := &AppPayload{SourceURL: "https://x/app"}
-	assertImplements[Media](t, "AppPayload", app)
+	app := &PayloadApp{SourceURL: "https://x/app"}
+	assertImplements[Media](t, "PayloadApp", app)
 }
 
 func assertImplements[I any](t *testing.T, name string, p Payload) {

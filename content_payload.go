@@ -53,19 +53,19 @@ type Captioned interface {
 	Caption() string
 }
 
-// PicPayload is the payload for CONTENT_PIC, CONTENT_COMICS, and
+// PayloadPic is the payload for CONTENT_PIC, CONTENT_COMICS, and
 // CONTENT_MEME: a single webp image. The three kinds differ only in which
 // in-app tool produced the image, not in shape.
-type PicPayload struct {
+type PayloadPic struct {
 	WebpURL string `json:"webp_url"`
 }
 
-func (*PicPayload) sealed()       {}
-func (p *PicPayload) URL() string { return p.WebpURL }
+func (*PayloadPic) sealed()       {}
+func (p *PayloadPic) URL() string { return p.WebpURL }
 
-// VideoClipPayload is the payload for CONTENT_VIDEO_CLIP, the most common
+// PayloadVideoClip is the payload for CONTENT_VIDEO_CLIP, the most common
 // video kind.
-type VideoClipPayload struct {
+type PayloadVideoClip struct {
 	ScreenURL  string `json:"screen_url"` // JPEG preview frame
 	SourceType string `json:"source_type"`
 	LogoURL    string `json:"logo_url,omitempty"` // source logo, present when SourceType != "user"
@@ -73,50 +73,50 @@ type VideoClipPayload struct {
 	Duration   int    `json:"duration"` // seconds
 }
 
-func (*VideoClipPayload) sealed()              {}
-func (p *VideoClipPayload) PreviewURL() string { return p.ScreenURL }
-func (p *VideoClipPayload) Size() int          { return p.Bytes }
+func (*PayloadVideoClip) sealed()              {}
+func (p *PayloadVideoClip) PreviewURL() string { return p.ScreenURL }
+func (p *PayloadVideoClip) Size() int          { return p.Bytes }
 
-// VideoPayload is the payload for CONTENT_VIDEO: a video imported from an
+// PayloadVideo is the payload for CONTENT_VIDEO: a video imported from an
 // external URL (e.g. YouTube), as opposed to one recorded/uploaded directly
 // (CONTENT_VIDEO_CLIP).
-type VideoPayload struct {
+type PayloadVideo struct {
 	SourceURL string `json:"url"`
 	Duration  int    `json:"duration"` // seconds
 	Length    int    `json:"length"`   // seconds; observed equal to Duration
 }
 
-func (*VideoPayload) sealed()       {}
-func (p *VideoPayload) URL() string { return p.SourceURL }
+func (*PayloadVideo) sealed()       {}
+func (p *PayloadVideo) URL() string { return p.SourceURL }
 
-// VinePayload is the payload for CONTENT_VINE: a legacy import from the
+// PayloadVine is the payload for CONTENT_VINE: a legacy import from the
 // defunct Vine app.
-type VinePayload struct {
+type PayloadVine struct {
 	ScreenURL string `json:"screen_url"`
 	Bytes     int    `json:"bytes"`
 }
 
-func (*VinePayload) sealed()              {}
-func (p *VinePayload) PreviewURL() string { return p.ScreenURL }
-func (p *VinePayload) Size() int          { return p.Bytes }
+func (*PayloadVine) sealed()              {}
+func (p *PayloadVine) PreviewURL() string { return p.ScreenURL }
+func (p *PayloadVine) Size() int          { return p.Bytes }
 
-// CoubPayload is the payload for CONTENT_COUB: a video meme imported from
+// PayloadCoub is the payload for CONTENT_COUB: a video meme imported from
 // coub.com.
-type CoubPayload struct {
+type PayloadCoub struct {
 	ScreenURL    string `json:"screen_url"`
 	Bytes        int    `json:"bytes"`
 	TrackbackURL string `json:"trackback_url"` // original Coub source
 	Duration     int    `json:"duration"`      // seconds
 }
 
-func (*CoubPayload) sealed()              {}
-func (p *CoubPayload) PreviewURL() string { return p.ScreenURL }
-func (p *CoubPayload) Size() int          { return p.Bytes }
+func (*PayloadCoub) sealed()              {}
+func (p *PayloadCoub) PreviewURL() string { return p.ScreenURL }
+func (p *PayloadCoub) Size() int          { return p.Bytes }
 
-// GifPayload is the payload for both CONTENT_GIF and CONTENT_GIF_CAPTION;
+// PayloadGif is the payload for both CONTENT_GIF and CONTENT_GIF_CAPTION;
 // the API uses the same "gif" JSON key for either kind. CaptionText is only
 // populated for CONTENT_GIF_CAPTION.
-type GifPayload struct {
+type PayloadGif struct {
 	ScreenURL   string `json:"screen_url"` // JPEG preview frame
 	Bytes       int    `json:"bytes"`
 	Mp4URL      string `json:"mp4_url"`
@@ -126,28 +126,28 @@ type GifPayload struct {
 	CaptionText string `json:"caption_text,omitempty"` // only set for CONTENT_GIF_CAPTION
 }
 
-func (*GifPayload) sealed()              {}
-func (p *GifPayload) URL() string        { return p.Mp4URL }
-func (p *GifPayload) PreviewURL() string { return p.ScreenURL }
-func (p *GifPayload) Size() int          { return p.Bytes }
-func (p *GifPayload) Caption() string    { return p.CaptionText }
+func (*PayloadGif) sealed()              {}
+func (p *PayloadGif) URL() string        { return p.Mp4URL }
+func (p *PayloadGif) PreviewURL() string { return p.ScreenURL }
+func (p *PayloadGif) Size() int          { return p.Bytes }
+func (p *PayloadGif) Caption() string    { return p.CaptionText }
 
-// CaptionPayload is the payload for CONTENT_CAPTION: a custom caption
+// PayloadCaption is the payload for CONTENT_CAPTION: a custom caption
 // composited onto an image meme. Unlike Pic, it carries no media URL of its
 // own — the underlying image lives on the Content itself.
-type CaptionPayload struct {
+type PayloadCaption struct {
 	CaptionText string `json:"caption_text"`
 }
 
-func (*CaptionPayload) sealed()           {}
-func (p *CaptionPayload) Caption() string { return p.CaptionText }
+func (*PayloadCaption) sealed()           {}
+func (p *PayloadCaption) Caption() string { return p.CaptionText }
 
-// AppPayload is the payload for CONTENT_APP: an interactive/iframe card.
+// PayloadApp is the payload for CONTENT_APP: an interactive/iframe card.
 // Deprecated by iFunny; kept for decoding historical content.
-type AppPayload struct {
+type PayloadApp struct {
 	SourceURL       string `json:"url"`
 	IsScrollAllowed bool   `json:"is_scroll_allowed"`
 }
 
-func (*AppPayload) sealed()       {}
-func (p *AppPayload) URL() string { return p.SourceURL }
+func (*PayloadApp) sealed()       {}
+func (p *PayloadApp) URL() string { return p.SourceURL }

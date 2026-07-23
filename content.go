@@ -77,29 +77,29 @@ type Content struct {
 	} `json:"creator"`
 
 	// Populated when Type == CONTENT_PIC.
-	Pic *PicPayload `json:"pic,omitempty"`
+	Pic *PayloadPic `json:"pic,omitempty"`
 	// Populated when Type == CONTENT_COMICS. Same shape as Pic; comics are
 	// just images produced by a different in-app creator.
-	Comics *PicPayload `json:"comics,omitempty"`
+	Comics *PayloadPic `json:"comics,omitempty"`
 	// Populated when Type == CONTENT_MEME. Same shape as Pic; memes come
 	// from iFunny's legacy "Meme" creator.
-	Meme *PicPayload `json:"mem,omitempty"`
+	Meme *PayloadPic `json:"mem,omitempty"`
 	// Populated when Type == CONTENT_VIDEO_CLIP.
-	VideoClip *VideoClipPayload `json:"video_clip,omitempty"`
+	VideoClip *PayloadVideoClip `json:"video_clip,omitempty"`
 	// Populated when Type == CONTENT_VIDEO.
-	Video *VideoPayload `json:"video,omitempty"`
+	Video *PayloadVideo `json:"video,omitempty"`
 	// Populated when Type == CONTENT_VINE.
-	Vine *VinePayload `json:"vine,omitempty"`
+	Vine *PayloadVine `json:"vine,omitempty"`
 	// Populated when Type == CONTENT_COUB.
-	Coub *CoubPayload `json:"coub,omitempty"`
+	Coub *PayloadCoub `json:"coub,omitempty"`
 	// Populated when Type is CONTENT_GIF or CONTENT_GIF_CAPTION. The API
 	// uses the same "gif" key for both; CaptionText is only meaningful
 	// (non-empty) for CONTENT_GIF_CAPTION.
-	Gif *GifPayload `json:"gif,omitempty"`
+	Gif *PayloadGif `json:"gif,omitempty"`
 	// Populated when Type == CONTENT_CAPTION.
-	Caption *CaptionPayload `json:"caption,omitempty"`
+	Caption *PayloadCaption `json:"caption,omitempty"`
 	// Populated when Type == CONTENT_APP.
-	App *AppPayload `json:"app,omitempty"`
+	App *PayloadApp `json:"app,omitempty"`
 }
 
 // Payload returns the kind-specific data for c as a Payload, chosen by
