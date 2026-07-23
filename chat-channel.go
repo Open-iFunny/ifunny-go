@@ -30,15 +30,6 @@ type ChatChannel struct {
 	} `json:"user"`
 }
 
-// ChatChannelPage wraps a paginated response of chat channels and a count.
-type ChatChannelPage struct {
-	Channels struct {
-		Items  []*ChatChannel `json:"items"`
-		Paging Cursor         `json:"paging"`
-	} `json:"channels"`
-	Num int `json:"num"`
-}
-
 func (chat *Chat) handleChannelsRaw(handle func(eventType int, channel *ChatChannel) error) EventHandler {
 	return func(eventType int, kwargs map[string]any) error {
 		log := chat.client.log.WithFields(logrus.Fields{"event_type": eventType, "kwargs": kwargs})
@@ -125,22 +116,20 @@ func (client *Client) GetChannels(ctx context.Context, desc compose.Request) ([]
 	return output.Data.Channels, err
 }
 
-// GetChannelsPage fetches a single page of chat channels given a composed request.
-// It is used internally by channel iteration methods and exported for advanced use cases.
-func (client *Client) GetChannelsPage(ctx context.Context, desc compose.Request) (*Page[ChatChannel], error) {
-	output := new(struct {
-		Data struct {
-			Channels Page[ChatChannel] `json:"channels"`
-		} `json:"data"`
-	})
-	err := client.RequestJSON(ctx, desc, output)
-	return &output.Data.Channels, err
+// ChannelsEnvelope is the response envelope for a chat-channel feed: the page
+// lives at data.channels. Hand it to [FetchPage]/[Iter] as E.
+type ChannelsEnvelope struct {
+	Data struct {
+		Channels Page[ChatChannel] `json:"channels"`
+	} `json:"data"`
 }
+
+func (e ChannelsEnvelope) page() Page[ChatChannel] { return e.Data.Channels }
 
 // IterChannelsQuery returns a channel that yields chat channels matching a search query.
 // The iterator automatically fetches new pages as needed.
 func (client *Client) IterChannelsQuery(ctx context.Context, query string) <-chan Result[*ChatChannel] {
-	return iterFrom(ctx, client, compose.Chats(query), client.GetChannelsPage)
+	return Iter[ChannelsEnvelope](ctx, client, compose.Chats(query))
 }
 
 // IterChannelsTrending returns a channel that yields the current trending chat
@@ -155,7 +144,8 @@ func (client *Client) IterChannelsTrending(ctx context.Context) <-chan Result[*C
 		case data <- r:
 			return true
 		case <-ctx.Done():
-			// Best-effort delivery of the cancellation, matching iterFrom.
+			// Best-effort delivery of the cancellation so a still-listening
+			// consumer can tell cancellation from exhaustion.
 			select {
 			case data <- Result[*ChatChannel]{Err: ctx.Err()}:
 			default:

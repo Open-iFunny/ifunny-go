@@ -51,32 +51,29 @@ func (client *Client) GetUser(ctx context.Context, desc compose.Request) (*User,
 	return &user.Data, err
 }
 
-// GetUsersPage fetches a page of users from endpoints whose envelope is data.users
-// (e.g., content smiles, content republishers, user subscribers, subscriptions).
-// It is used internally by user iteration methods and exported for advanced use cases.
-// These endpoints return a reduced projection of User (no email/privacy fields);
-// absent fields are simply zero-valued.
-func (client *Client) GetUsersPage(ctx context.Context, request compose.Request) (*Page[User], error) {
-	users := new(struct {
-		Data struct {
-			Users Page[User] `json:"users"`
-		} `json:"data"`
-	})
-
-	err := client.RequestJSON(ctx, request, users)
-	return &users.Data.Users, err
+// UsersEnvelope is the response envelope for user feeds whose page lives at
+// data.users (content smiles, content republishers, user subscribers,
+// subscriptions). Hand it to [FetchPage]/[Iter] as E. These endpoints return a
+// reduced projection of User (no email/privacy fields); absent fields are simply
+// zero-valued.
+type UsersEnvelope struct {
+	Data struct {
+		Users Page[User] `json:"users"`
+	} `json:"data"`
 }
+
+func (e UsersEnvelope) page() Page[User] { return e.Data.Users }
 
 // IterSubscribers returns a channel that yields users who follow the user (identified by ID).
 // The iterator automatically fetches new pages as needed.
 func (client *Client) IterSubscribers(ctx context.Context, id string) <-chan Result[*User] {
-	return iterFrom(ctx, client, compose.Subscribers(id), client.GetUsersPage)
+	return Iter[UsersEnvelope](ctx, client, compose.Subscribers(id))
 }
 
 // IterSubscriptions returns a channel that yields users followed by the user (identified by ID).
 // The iterator automatically fetches new pages as needed.
 func (client *Client) IterSubscriptions(ctx context.Context, id string) <-chan Result[*User] {
-	return iterFrom(ctx, client, compose.Subscriptions(id), client.GetUsersPage)
+	return Iter[UsersEnvelope](ctx, client, compose.Subscriptions(id))
 }
 
 // GetUsers executes a chat RPC call and unmarshals the result as a list of users.

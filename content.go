@@ -90,18 +90,15 @@ func (client *Client) GetContent(ctx context.Context, id string) (*Content, erro
 	return &content.Data, err
 }
 
-// GetFeedPage fetches a single page of content given a composed request. It is used
-// internally by feed iteration methods and is exported for advanced use cases.
-func (client *Client) GetFeedPage(ctx context.Context, request compose.Request) (*Page[Content], error) {
-	content := new(struct {
-		Data struct {
-			Content Page[Content] `json:"content"`
-		} `json:"data"`
-	})
-
-	err := client.RequestJSON(ctx, request, content)
-	return &content.Data.Content, err
+// FeedEnvelope is the response envelope for content feeds (featured, collective,
+// timelines): the page lives at data.content. Hand it to [FetchPage]/[Iter] as E.
+type FeedEnvelope struct {
+	Data struct {
+		Content Page[Content] `json:"content"`
+	} `json:"data"`
 }
+
+func (e FeedEnvelope) page() Page[Content] { return e.Data.Content }
 
 // IterContent returns a channel that yields content from an arbitrary feed
 // descriptor. It is the generic entry point behind IterTimeline/IterCollective/etc.,
@@ -109,7 +106,7 @@ func (client *Client) GetFeedPage(ctx context.Context, request compose.Request) 
 // custom knobs (see [compose.Collective]). The iterator automatically fetches new
 // pages as needed. Cancel ctx to stop.
 func (client *Client) IterContent(ctx context.Context, feed compose.Feed) <-chan Result[*Content] {
-	return iterFrom(ctx, client, feed, client.GetFeedPage)
+	return Iter[FeedEnvelope](ctx, client, feed)
 }
 
 // IterCollective returns a channel that yields content from the collective feed,
@@ -135,11 +132,11 @@ func (client *Client) IterTimelineByNick(ctx context.Context, nick string) <-cha
 // IterSmiles returns a channel that yields users who smiled at the content (identified by ID).
 // The iterator automatically fetches new pages as needed.
 func (client *Client) IterSmiles(ctx context.Context, id string) <-chan Result[*User] {
-	return iterFrom(ctx, client, compose.Smiles(id), client.GetUsersPage)
+	return Iter[UsersEnvelope](ctx, client, compose.Smiles(id))
 }
 
 // IterRepublishers returns a channel that yields users who republished the content (identified by ID).
 // The iterator automatically fetches new pages as needed.
 func (client *Client) IterRepublishers(ctx context.Context, id string) <-chan Result[*User] {
-	return iterFrom(ctx, client, compose.Republished(id), client.GetUsersPage)
+	return Iter[UsersEnvelope](ctx, client, compose.Republished(id))
 }
