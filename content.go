@@ -22,7 +22,7 @@ type Content struct {
 	ID          string `json:"id"`
 	Link        string `json:"link"`
 	DateCreated int64  `json:"date_created"`
-	PublushAt   int64  `json:"publish_at"`
+	PublishAt   int64  `json:"publish_at"`
 	// IssueAt is the unix time (seconds) the post was featured — the drop
 	// ("issue") it shipped in. Zero for content never featured. See
 	// [Client.GetNextIssueTime] for the upcoming drop.
