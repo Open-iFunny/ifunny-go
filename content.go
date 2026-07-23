@@ -90,10 +90,8 @@ func (client *Client) GetContent(ctx context.Context, id string) (*Content, erro
 	return &content.Data, err
 }
 
-// FeedEnvelope is the response envelope for content feeds: the page lives at
-// data.content. It is the E to hand [FetchPage] or [Iter] for a /feeds/-style
-// content endpoint (featured, collective, timelines, smiles-on... any feed
-// served in the classic content shape).
+// FeedEnvelope is the response envelope for content feeds (featured, collective,
+// timelines): the page lives at data.content. Hand it to [FetchPage]/[Iter] as E.
 type FeedEnvelope struct {
 	Data struct {
 		Content Page[Content] `json:"content"`

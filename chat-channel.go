@@ -144,7 +144,8 @@ func (client *Client) IterChannelsTrending(ctx context.Context) <-chan Result[*C
 		case data <- r:
 			return true
 		case <-ctx.Done():
-			// Best-effort delivery of the cancellation, matching Iter.
+			// Best-effort delivery of the cancellation so a still-listening
+			// consumer can tell cancellation from exhaustion.
 			select {
 			case data <- Result[*ChatChannel]{Err: ctx.Err()}:
 			default:
