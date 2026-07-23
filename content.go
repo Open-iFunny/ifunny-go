@@ -22,7 +22,8 @@ type Content struct {
 	ID          string   `json:"id"`
 	Link        string   `json:"link"`
 	DateCreated int64    `json:"date_created"`
-	PublushAt   int64    `json:"publish_at"`
+	PublishAt   int64    `json:"publish_at"`
+	IssueAt     int64    `json:"issue_at"`
 	Tags        []string `json:"tags"`
 	State       string   `json:"state"`
 	ShotStatus  string   `json:"shot_status"`
