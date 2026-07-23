@@ -64,10 +64,67 @@ type CommentsEnvelope struct {
 
 func (e CommentsEnvelope) page() Page[Comment] { return e.Data.Comments }
 
-// IterComments returns a channel that yields top-level comments on content (identified by ID).
-// The iterator automatically fetches new pages as needed.
-func (client *Client) IterComments(ctx context.Context, id string) <-chan Result[*Comment] {
+// IterCommentsRoots returns a channel that yields only the top-level (root)
+// comments on content (identified by ID); replies are not descended into. The
+// iterator automatically fetches new pages as needed. Use [Client.IterCommentsForest]
+// to walk roots and all of their nested replies.
+func (client *Client) IterCommentsRoots(ctx context.Context, id string) <-chan Result[*Comment] {
 	return Iter[CommentsEnvelope](ctx, client, compose.Comments(id))
+}
+
+// IterCommentsForest returns a channel that yields every comment on content
+// (identified by ID) in depth-first order: each root comment is emitted, then
+// its replies recursively (a reply and its own replies before the next sibling),
+// then the next root. It stitches [Client.IterCommentsRoots] and
+// [Client.IterReplies] together, descending into a comment only when its
+// reported reply count (Num.Replies) is non-zero to avoid empty reply requests
+// on leaves.
+//
+// Errors and cancellation follow the same contract as the other iterators (see
+// [Result]): a fetch failure anywhere in the walk is delivered as a final Result
+// with Err set before the channel closes, and cancelling ctx stops the walk.
+func (client *Client) IterCommentsForest(ctx context.Context, id string) <-chan Result[*Comment] {
+	data := make(chan Result[*Comment])
+
+	send := func(r Result[*Comment]) bool {
+		select {
+		case data <- r:
+			return true
+		case <-ctx.Done():
+			select {
+			case data <- Result[*Comment]{Err: ctx.Err()}:
+			default:
+			}
+			return false
+		}
+	}
+
+	// walk emits every comment from src, descending into the replies of any
+	// comment that reports having some. It returns false as soon as delivery
+	// fails (ctx cancelled) or a source yields an error, so callers unwind the
+	// whole traversal.
+	var walk func(src <-chan Result[*Comment]) bool
+	walk = func(src <-chan Result[*Comment]) bool {
+		for r := range src {
+			if !send(r) {
+				return false
+			}
+			if r.Err != nil {
+				return false
+			}
+			if r.V.Num.Replies > 0 && !walk(client.IterReplies(ctx, id, r.V.ID)) {
+				return false
+			}
+		}
+		return true
+	}
+
+	go func() {
+		defer close(data)
+		walk(client.IterCommentsRoots(ctx, id))
+	}()
+
+	return data
 }
 
 // RepliesEnvelope is the response envelope for a reply feed: the page lives at
