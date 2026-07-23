@@ -41,6 +41,10 @@ type Content struct {
 	// against DateCreated across a feed is the raw material for modeling the
 	// feed's drop cadence.
 	PublishAt int64 `json:"publish_at"`
+	// IssueAt is the unix time (seconds) the post was featured — the drop
+	// ("issue") it shipped in. Zero for content never featured. See
+	// [Client.GetNextIssueTime] for the upcoming drop.
+	IssueAt int64 `json:"issue_at"`
 	Tags        []string `json:"tags"`
 	State       string   `json:"state"`
 	ShotStatus  string   `json:"shot_status"`
